@@ -1,4 +1,5 @@
 export interface UiData {
+    id: number
     label: string,
     img: string,
     serving_size: number
@@ -23,4 +24,12 @@ export enum User {
 export enum DispenseType {
     Classic,
     LargeSmall
+}
+
+
+export enum RunState {
+    Ready,
+    Running,
+    Cleaning,
+    Emptying,
 }

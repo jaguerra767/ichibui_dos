@@ -2,7 +2,7 @@ use serde::Serialize;
 use serde_derive::Deserialize;
 use std::{env, sync::LazyLock};
 
-static HOME_DIRECTORY: LazyLock<String> = LazyLock::new(|| {
+pub static HOME_DIRECTORY: LazyLock<String> = LazyLock::new(|| {
     env::var_os("HOME")
         .expect("Fatal, no home directory found")
         .into_string()
@@ -11,6 +11,7 @@ static HOME_DIRECTORY: LazyLock<String> = LazyLock::new(|| {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UiData {
+    pub id: usize,
     pub label: String,
     pub img: String,
     pub serving_size: usize,
@@ -20,6 +21,7 @@ pub struct UiData {
 impl Default for UiData {
     fn default() -> Self {
         Self {
+            id: 0,
             label: "Default snack".to_string(),
             img: "caldo-icon-blue.svg".to_string(),
             serving_size: 20,
@@ -95,7 +97,6 @@ impl Default for Ingredients {
 pub fn read_ingredient_config() -> Result<Ingredients, Box<dyn std::error::Error>> {
     const PATH: &str = ".config/ichibu/ingredient_config.toml";
     let path = format!("{}/{}", &*HOME_DIRECTORY, PATH);
-    println!("{}", path);
     let config_content = std::fs::read_to_string(path)?;
     let config = toml::from_str(&config_content)?;
     Ok(config)

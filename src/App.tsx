@@ -50,7 +50,7 @@ function App() {
             }
 
             const mappedIngredients: Ingredient[] = data.map((d, index) => ({
-                id: index,
+                id: d.id,
                 name: d.label,
                 img_filename: d.img,
                 base64_img: images[index]
