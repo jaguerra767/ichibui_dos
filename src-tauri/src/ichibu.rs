@@ -1,12 +1,20 @@
-use crate::config::Config;
+use crate::config::{self, Config};
 use crate::data_logging::{Data, DataAction};
+use crate::hatch::Hatch;
+use crate::io::{self, setup_conveyor_motor, setup_hatch};
+use crate::AppData;
+use control_components::components::clear_core_motor::ClearCoreMotor;
 use control_components::components::scale::ScaleCmd;
 use control_components::controllers::clear_core::Controller;
-use log::{debug, info, warn};
+use control_components::subsystems::dispenser::{
+    Dispenser, Parameters, Setpoint, WeightedDispense,
+};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::time::Duration;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::Mutex;
 
 type CCController = Controller;
 #[derive(Debug, Clone, Deserialize)]
@@ -20,13 +28,6 @@ pub enum DispenseType {
     #[default]
     Classic,
     LargeSmall,
-}
-
-#[derive(Debug, Clone)]
-pub enum UICmd {
-    SetRunState(RunState),
-    SetIngredientId(usize),
-    SetCustomIngredient(CustomIngredient),
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
@@ -75,45 +76,21 @@ impl State {
 #[derive(Clone, Debug)]
 pub struct Ichibu {
     state: Arc<Mutex<State>>,
-    cmd: Arc<Mutex<Option<UICmd>>>,
     custom_ingredient: Option<CustomIngredient>,
 }
 impl Ichibu {
-    pub fn new(state: Arc<Mutex<State>>, cmd: Arc<Mutex<Option<UICmd>>>) -> Self {
+    pub fn new(state: Arc<Mutex<State>>) -> Self {
         Self {
             state,
-            cmd,
             custom_ingredient: Some(CustomIngredient {
                 serving_size: 0.,
                 speed: 0.,
             }),
         }
     }
-    pub async fn update_from_ui(&mut self) {
-        let cmd = self.cmd.lock().await.clone();
-        if let Some(new_cmd) = cmd {
-            match new_cmd {
-                UICmd::SetIngredientId(new_id) => self.update_ingredient_id(new_id).await,
-                UICmd::SetRunState(new_state) => self.update_run_state(new_state).await,
-                UICmd::SetCustomIngredient(custom_ingredient) => {
-                    self.set_custom_ingredient(custom_ingredient)
-                }
-            }
-        }
-        let mut new_cmd = self.cmd.lock().await;
-        *new_cmd = None;
-    }
-    pub async fn get_run_state(&self) -> RunState {
-        self.state.lock().await.run_state.clone()
-    }
-    pub async fn get_ingredient_id(&self) -> usize {
-        self.state.lock().await.ingredient_id.clone()
-    }
-    pub async fn get_hatch_state(&self) -> HatchState {
-        self.state.lock().await.hatch_state.clone()
-    }
+
     pub async fn fill_hatch(&mut self) {
-        let mut state = self.state.lock().await;
+        let mut state = self.state.lock().unwrap();
         if state.hatch_state.is_empty() {
             state.hatch_state = HatchState::Filled
         } else {
@@ -121,7 +98,7 @@ impl Ichibu {
         }
     }
     pub async fn empty_hatch(&mut self) {
-        let mut state = self.state.lock().await;
+        let mut state = self.state.lock().unwrap();
         if state.hatch_state.is_filled() {
             state.hatch_state = HatchState::Empty
         } else {
@@ -131,9 +108,10 @@ impl Ichibu {
 
     pub async fn update_ingredient_id(&mut self, new_id: usize) {
         info!("Ingredient ID updated to {:?}", new_id);
-        let mut state = self.state.lock().await;
+        let mut state = self.state.lock().unwrap();
         state.ingredient_id = new_id;
     }
+
     fn set_custom_ingredient(&mut self, custom_ingredient: CustomIngredient) {
         info!("New custom ingredient: {:?}", custom_ingredient);
         self.custom_ingredient = Some(custom_ingredient);
@@ -142,7 +120,7 @@ impl Ichibu {
         self.custom_ingredient.clone()
     }
     pub async fn update_run_state(&mut self, new_state: RunState) {
-        let mut state = self.state.lock().await;
+        let mut state = self.state.lock().unwrap();
         match (&state.run_state, &new_state) {
             (RunState::Ready, RunState::Running) => {
                 info!("Starting cycle");
@@ -179,23 +157,23 @@ impl Ichibu {
         }
     }
     pub async fn is_in_idle_state(&self) -> bool {
-        match self.state.lock().await.run_state {
+        match self.state.lock().unwrap().run_state {
             RunState::Running | RunState::Emptying => false,
             RunState::Ready | RunState::Cleaning => true,
         }
     }
 
     pub async fn get_bowl_count(&self) -> usize {
-        self.state.lock().await.bowl_count
+        self.state.lock().unwrap().bowl_count
     }
     pub async fn update_bowl_count(&mut self) {
-        let mut state = self.state.lock().await;
+        let mut state = self.state.lock().unwrap();
         let count = state.bowl_count;
         state.bowl_count = count + 1;
     }
 
     pub async fn get_node_level(&self) -> NodeLevel {
-        let state = self.state.lock().await;
+        let state = self.state.lock().unwrap();
         state.node_level.clone()
     }
     pub async fn update_node_level(&mut self, config: &Config, io: &IchibuIo, database: &Data) {
@@ -208,7 +186,7 @@ impl Ichibu {
             weights_vec.push(weight_rx.await.unwrap());
         }
         weights_vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let mut state = self.state.lock().await;
+        let mut state = self.state.lock().unwrap();
         let old_level = &state.node_level;
 
         let current_weight = weights_vec[samples / 2];
@@ -270,4 +248,69 @@ pub enum Mode {
     Prod,
     Dev,
     Weigh,
+}
+
+pub async fn cycle(
+    app_data: &AppData,
+    config: &Config,
+    motor: ClearCoreMotor,
+    mut hatch: Hatch,
+    io: Sender<ScaleCmd>,
+) {
+    match app_data.run_state {
+        RunState::Ready => {
+            hatch.close().await.unwrap();
+            if let Err(e) = motor.enable().await {
+                error!("Failed to enable motor: {:?}", e);
+            }
+        }
+        RunState::Running => {
+            if let Some(snack) = &app_data.current_ingredient {
+                let setpoint = Setpoint::Weight(WeightedDispense {
+                    setpoint: snack.min_setpoint as f64,
+                    timeout: Duration::from_micros(1000),
+                });
+
+                let retract_before= if snack.dispense_parameters.retract_before{
+                    Some(snack.dispense_parameters.retract_before_param)
+                } else {
+                    None
+                };
+
+                let retract_after= if snack.dispense_parameters.retract_after{
+                    Some(snack.dispense_parameters.retract_after_param)
+                } else {
+                    None
+                };
+
+                let parameters = Parameters {
+                    motor_speed: snack.dispense_parameters.motor_speed,
+                    sample_rate: snack.dispense_parameters.sample_rate,
+                    cutoff_frequency: snack.dispense_parameters.cutoff_freq,
+                    check_offset: snack.dispense_parameters.check_offset,
+                    stop_offset: snack.dispense_parameters.stop_offset,
+                    retract_before,
+                    retract_after
+                };
+
+                let dispenser = Dispenser::new(motor.clone(), setpoint, parameters.clone(), io.clone());
+                    
+                dispenser
+                    .dispense(config.dispense.timeout)
+                    .await;
+
+                if matches!(app_data.dispense_type, DispenseType::LargeSmall) {
+                    let setpoint = Setpoint::Weight(WeightedDispense {
+                        setpoint: snack.min_setpoint as f64,
+                        timeout: Duration::from_micros(1000),
+                    });
+                Dispenser::new(motor.clone(), setpoint, parameters, io)
+                    .dispense(config.dispense.timeout)
+                    .await;
+                }
+            }
+        }
+        RunState::Cleaning => motor.disable().await,
+        RunState::Emptying => todo!(),
+    }
 }

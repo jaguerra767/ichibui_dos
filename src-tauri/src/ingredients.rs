@@ -1,13 +1,7 @@
 use serde::Serialize;
 use serde_derive::Deserialize;
-use std::{env, sync::LazyLock};
 
-pub static HOME_DIRECTORY: LazyLock<String> = LazyLock::new(|| {
-    env::var_os("HOME")
-        .expect("Fatal, no home directory found")
-        .into_string()
-        .unwrap()
-});
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UiData {
@@ -33,10 +27,10 @@ impl Default for UiData {
 #[derive(Deserialize, Debug)]
 pub struct DispenseParameters {
     pub motor_speed: f64,
-    pub sample_rate: usize,
-    pub cutoff_freq: usize,
+    pub sample_rate: f64,
+    pub cutoff_freq: f64,
     pub check_offset: f64,
-    pub stop_offset: usize,
+    pub stop_offset: f64,
     pub retract_before: bool,
     pub retract_before_param: f64,
     pub retract_after: bool,
@@ -47,10 +41,10 @@ impl Default for DispenseParameters {
     fn default() -> Self {
         Self {
             motor_speed: 0.7,
-            sample_rate: 50,
-            cutoff_freq: 2,
+            sample_rate: 50.,
+            cutoff_freq: 2.,
             check_offset: 0.3,
-            stop_offset: 1,
+            stop_offset: 1.,
             retract_before: false,
             retract_before_param: 0.0,
             retract_after: false,
@@ -94,36 +88,17 @@ impl Default for Ingredients {
     }
 }
 
-pub fn read_ingredient_config() -> Result<Ingredients, Box<dyn std::error::Error>> {
+pub fn read_ingredient_config(root_dir: &str) -> Result<Ingredients, Box<dyn std::error::Error>> {
     const PATH: &str = ".config/ichibu/ingredient_config.toml";
-    let path = format!("{}/{}", &*HOME_DIRECTORY, PATH);
+    let path = format!("{}/{}", root_dir, PATH);
     let config_content = std::fs::read_to_string(path)?;
     let config = toml::from_str(&config_content)?;
     Ok(config)
 }
 
-pub fn read_image(filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    const PATH: &str = ".config/ichibu/images/";
-    let path = format!("{}/{}/{}", &*HOME_DIRECTORY, PATH, filename);
-    let image = std::fs::read(path)?;
-    Ok(image)
-}
-
-pub fn read_caldo_logo() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    const CALDO_LOGO: &str = "caldo-icon-blue.svg";
-    let logo = read_image(CALDO_LOGO)?;
-    Ok(logo)
-}
-
 #[test]
 fn test_read_ingredient_config() {
-    let config = read_ingredient_config();
+    use crate::HOME_DIRECTORY;
+    let config = read_ingredient_config(HOME_DIRECTORY.as_str());
     assert_ne!(config.is_err(), true)
-}
-
-#[test]
-fn test_read_caldo_logo() {
-    let logo = read_caldo_logo();
-    assert_ne!(logo.is_err(), true);
-    println!("{:?}", logo.unwrap())
 }

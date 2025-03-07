@@ -1,18 +1,30 @@
 // use std::{env, sync::LazyLock};
 // use ingredients::{UiData};
 
-use std::sync::{Arc, Mutex};
-
-use ichibu::{DispenseType, RunState};
-use ingredients::{read_caldo_logo, read_image, read_ingredient_config, UiData};
+use ichibu::{DispenseType, NodeLevel, RunState};
+use ingredients::{read_ingredient_config, Ingredient, UiData};
 use serde::{Deserialize, Serialize};
-use tauri::ipc::Response;
+use std::{
+    env,
+    sync::{Arc, LazyLock, Mutex},
+};
+use tauri::{ipc::Response, Manager};
+use tokio::sync::mpsc;
 
 pub mod config;
 pub mod data_logging;
 pub mod hatch;
 pub mod ichibu;
 pub mod ingredients;
+pub mod io;
+pub mod photo_eye;
+
+pub static HOME_DIRECTORY: LazyLock<String> = LazyLock::new(|| {
+    env::var_os("HOME")
+        .expect("Fatal, no home directory found")
+        .into_string()
+        .unwrap()
+});
 
 #[derive(Serialize, Deserialize, Default)]
 pub enum User {
@@ -23,20 +35,35 @@ pub enum User {
     Operator,
 }
 
-
 #[derive(Default)]
+//App data is what should be shared between the UI and the controls
 pub struct AppData {
-    pub current_ingredient_id: usize,
-    pub user: User,
-    pub machine_state: ichibu::State,
+    pub run_state: RunState,
+    pub dispense_type: DispenseType,
+    pub node_level: NodeLevel,
+    pub photo_eye_state: io::PhotoEyeState,
+    pub bowl_count: usize,
+    pub current_ingredient: Option<Ingredient>,
+}
+
+impl AppData {
+    pub fn new(photo_eye_state: io::PhotoEyeState, bowl_count: usize) -> Self {
+        Self {
+            run_state: RunState::Ready,
+            dispense_type: DispenseType::Classic,
+            node_level: NodeLevel::Empty,
+            photo_eye_state,
+            bowl_count,
+            current_ingredient: None,
+        }
+    }
 }
 
 struct IchibuState(Arc<Mutex<AppData>>);
 
-
 #[tauri::command]
 fn get_ingredient_data() -> Vec<UiData> {
-    let response = match read_ingredient_config() {
+    let response = match read_ingredient_config(HOME_DIRECTORY.as_str()) {
         Ok(data) => data.ingredients.into_iter().map(|i| i.ui_data).collect(),
         Err(_) => vec![UiData::default()],
     };
@@ -45,9 +72,9 @@ fn get_ingredient_data() -> Vec<UiData> {
 
 #[tauri::command]
 fn get_image(filename: String) -> Response {
-    let response = match read_image(&filename) {
+    let response = match read_image(HOME_DIRECTORY.as_str(), &filename) {
         Ok(res) => res,
-        Err(_) => read_caldo_logo().unwrap_or_default(),
+        Err(_) => read_caldo_logo(HOME_DIRECTORY.as_str()).unwrap_or_default(),
     };
     tauri::ipc::Response::new(response)
 }
@@ -55,38 +82,42 @@ fn get_image(filename: String) -> Response {
 #[tauri::command]
 fn get_dispense_count(state: tauri::State<'_, IchibuState>) -> usize {
     let state_guard = state.0.lock().unwrap();
-    state_guard.machine_state.bowl_count
+    state_guard.bowl_count
 }
 
 #[tauri::command]
-fn update_current_ingredient(state: tauri::State<'_, IchibuState>, snack_id: usize) {
+fn update_current_ingredient(state: tauri::State<'_, IchibuState>, snack: Ingredient) {
     let mut state_guard = state.0.lock().unwrap();
-    state_guard.current_ingredient_id = snack_id;
-
+    state_guard.current_ingredient = Some(snack);
 }
 
 #[tauri::command]
 fn update_run_state(state: tauri::State<'_, IchibuState>, run_state: RunState) {
     let mut state_guard = state.0.lock().unwrap();
-    state_guard.machine_state.run_state = run_state
+    state_guard.run_state = run_state
 }
 
 #[tauri::command]
-fn update_dispense_type(state: tauri::State<'_, IchibuState>, dispense_type: DispenseType){
+fn update_dispense_type(state: tauri::State<'_, IchibuState>, dispense_type: DispenseType) {
     let mut state_guard = state.0.lock().unwrap();
-    state_guard.machine_state.dispense_type = dispense_type
+    state_guard.dispense_type = dispense_type
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    
+    // let (async_proc_input_tx, async_proc_input_rx) = mpsc::channel(1);
+    // let (async_proc_output_tx, mut async_proc_output_rx) = mpsc::channel(1);
 
     tauri::Builder::default()
         .manage(IchibuState(Arc::new(Mutex::new(AppData::default()))))
         .plugin(tauri_plugin_opener::init())
-        .setup(|_app| {
+        .setup(|app| {
+            let state = app.state::<IchibuState>().0.clone();
             tauri::async_runtime::spawn(async move {
                 //Existing Ichibu-os code runs here
+                let _ = state;
+                let config = config::Config::load();
+                let _io_handle = io::launch_io(&config).await;
             });
             Ok(())
         })
@@ -100,4 +131,24 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+pub fn read_image(root_dir: &str, filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    const PATH: &str = ".config/ichibu/images/";
+    let path = format!("{}/{}/{}", root_dir, PATH, filename);
+    let image = std::fs::read(path)?;
+    Ok(image)
+}
+
+pub fn read_caldo_logo(root_dir: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    const CALDO_LOGO: &str = "caldo-icon-blue.svg";
+    let logo = read_image(root_dir, CALDO_LOGO)?;
+    Ok(logo)
+}
+
+#[test]
+fn test_read_caldo_logo() {
+    let logo = read_caldo_logo(HOME_DIRECTORY.as_str());
+    assert_ne!(logo.is_err(), true);
+    println!("{:?}", logo.unwrap())
 }
