@@ -11,32 +11,15 @@ use crate::config::Config;
 use crate::hatch::Hatch;
 // use tokio::time::interval;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
+
 pub enum PhotoEyeState {
     Blocked,
     #[default]
     Unblocked,
 }
 
-pub struct PhotoEye {
-    input: DigitalInput,
-}
-
-impl PhotoEye {
-    pub fn new(input: DigitalInput) -> Self {
-        Self { input }
-    }
-
-    pub async fn get_state(&self) -> PhotoEyeState {
-        if self.input.get_state().await {
-            PhotoEyeState::Blocked
-        } else {
-            PhotoEyeState::Unblocked
-        }
-    }
-}
-
-pub async fn photo_eye_state(input: DigitalInput) -> PhotoEyeState {
+pub async fn photo_eye_state(input: &DigitalInput) -> PhotoEyeState {
     if input.get_state().await {
         PhotoEyeState::Blocked
     } else {

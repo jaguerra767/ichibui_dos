@@ -1,18 +1,18 @@
 // use std::{env, sync::LazyLock};
 // use ingredients::{UiData};
 
-use ichibu::{DispenseType, NodeLevel, RunState};
+use ichibu::IchibuState;
 use ingredients::{read_ingredient_config, Ingredient, UiData};
 use serde::{Deserialize, Serialize};
 use std::{
     env,
-    sync::{Arc, LazyLock, Mutex},
+    sync::{LazyLock, Mutex},
 };
 use tauri::{ipc::Response, Manager};
-use tokio::sync::mpsc;
 
 pub mod config;
 pub mod data_logging;
+pub mod dispense;
 pub mod hatch;
 pub mod ichibu;
 pub mod ingredients;
@@ -25,6 +25,37 @@ pub static HOME_DIRECTORY: LazyLock<String> = LazyLock::new(|| {
         .into_string()
         .unwrap()
 });
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub enum DispenseType {
+    #[default]
+    Classic,
+    LargeSmall,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub enum RunState {
+    #[default]
+    Ready,
+    Running,
+    Cleaning,
+    Emptying,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub enum UiRequest {
+    #[default]
+    None,
+    SmallDispense,
+    RegularDispense,
+}
+
+#[derive(Default, Debug, Serialize)]
+pub enum NodeLevel {
+    #[default]
+    Filled,
+    Empty,
+}
 
 #[derive(Serialize, Deserialize, Default)]
 pub enum User {
@@ -39,6 +70,8 @@ pub enum User {
 //App data is what should be shared between the UI and the controls
 pub struct AppData {
     pub run_state: RunState,
+    pub ichibu_state: IchibuState,
+    pub ui_request: UiRequest,
     pub dispense_type: DispenseType,
     pub node_level: NodeLevel,
     pub photo_eye_state: io::PhotoEyeState,
@@ -50,6 +83,8 @@ impl AppData {
     pub fn new(photo_eye_state: io::PhotoEyeState, bowl_count: usize) -> Self {
         Self {
             run_state: RunState::Ready,
+            ichibu_state: IchibuState::Setup,
+            ui_request: UiRequest::None,
             dispense_type: DispenseType::Classic,
             node_level: NodeLevel::Empty,
             photo_eye_state,
@@ -58,8 +93,6 @@ impl AppData {
         }
     }
 }
-
-struct IchibuState(Arc<Mutex<AppData>>);
 
 #[tauri::command]
 fn get_ingredient_data() -> Vec<UiData> {
@@ -80,26 +113,26 @@ fn get_image(filename: String) -> Response {
 }
 
 #[tauri::command]
-fn get_dispense_count(state: tauri::State<'_, IchibuState>) -> usize {
-    let state_guard = state.0.lock().unwrap();
+fn get_dispense_count(state: tauri::State<'_, Mutex<AppData>>) -> usize {
+    let state_guard = state.lock().unwrap();
     state_guard.bowl_count
 }
 
 #[tauri::command]
-fn update_current_ingredient(state: tauri::State<'_, IchibuState>, snack: Ingredient) {
-    let mut state_guard = state.0.lock().unwrap();
+fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack: Ingredient) {
+    let mut state_guard = state.lock().unwrap();
     state_guard.current_ingredient = Some(snack);
 }
 
 #[tauri::command]
-fn update_run_state(state: tauri::State<'_, IchibuState>, run_state: RunState) {
-    let mut state_guard = state.0.lock().unwrap();
+fn update_run_state(state: tauri::State<'_, Mutex<AppData>>, run_state: RunState) {
+    let mut state_guard = state.lock().unwrap();
     state_guard.run_state = run_state
 }
 
 #[tauri::command]
-fn update_dispense_type(state: tauri::State<'_, IchibuState>, dispense_type: DispenseType) {
-    let mut state_guard = state.0.lock().unwrap();
+fn update_dispense_type(state: tauri::State<'_, Mutex<AppData>>, dispense_type: DispenseType) {
+    let mut state_guard = state.lock().unwrap();
     state_guard.dispense_type = dispense_type
 }
 
@@ -109,10 +142,10 @@ pub fn run() {
     // let (async_proc_output_tx, mut async_proc_output_rx) = mpsc::channel(1);
 
     tauri::Builder::default()
-        .manage(IchibuState(Arc::new(Mutex::new(AppData::default()))))
+        .manage(Mutex::new(AppData::default()))
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let state = app.state::<IchibuState>().0.clone();
+            let state = app.state::<Mutex<AppData>>().clone();
             tauri::async_runtime::spawn(async move {
                 //Existing Ichibu-os code runs here
                 let _ = state;

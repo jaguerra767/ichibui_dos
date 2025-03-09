@@ -9,24 +9,6 @@ pub enum PhotoEyeState {
     Unblocked,
 }
 
-pub struct PhotoEye {
-    input: DigitalInput,
-}
-
-impl PhotoEye {
-    pub fn new(input: DigitalInput) -> Self {
-        Self { input }
-    }
-
-    pub async fn get_state(&self) -> PhotoEyeState {
-        if self.input.get_state().await {
-            PhotoEyeState::Blocked
-        } else {
-            PhotoEyeState::Unblocked
-        }
-    }
-}
-
 pub async fn photo_eye_state(input: DigitalInput) -> PhotoEyeState {
     if input.get_state().await {
         PhotoEyeState::Blocked

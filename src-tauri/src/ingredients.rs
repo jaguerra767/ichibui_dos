@@ -1,9 +1,8 @@
+use control_components::subsystems::dispenser::Parameters;
 use serde::Serialize;
 use serde_derive::Deserialize;
 
-
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UiData {
     pub id: usize,
     pub label: String,
@@ -24,7 +23,7 @@ impl Default for UiData {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct DispenseParameters {
     pub motor_speed: f64,
     pub sample_rate: f64,
@@ -53,7 +52,33 @@ impl Default for DispenseParameters {
     }
 }
 
-#[derive(Deserialize, Debug)]
+impl From<DispenseParameters> for Parameters {
+    fn from(value: DispenseParameters) -> Self {
+        let retract_before = if value.retract_before {
+            Some(value.retract_before_param)
+        } else {
+            None
+        };
+
+        let retract_after = if value.retract_after {
+            Some(value.retract_after_param)
+        } else {
+            None
+        };
+
+        Self {
+            motor_speed: value.motor_speed,
+            sample_rate: value.sample_rate,
+            cutoff_frequency: value.cutoff_freq,
+            check_offset: value.check_offset,
+            stop_offset: value.stop_offset,
+            retract_before,
+            retract_after,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct Ingredient {
     pub name: String,
     pub id: usize,
