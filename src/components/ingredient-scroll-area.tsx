@@ -18,7 +18,7 @@ const IngredientScrollArea: React.FC<IngredientScrollAreaProps> = ({images}) => 
                     <>
                         <div className="overflow-hidden">
                         <div key={index} className="text-sm text-slate-50">
-                        <SvgViewer base64svg={image}></SvgViewer>
+                        <SvgViewer base64svg={image} height={"h-56"}></SvgViewer>
                         </div>
                         <Separator className="my-2" />
                         </div>
