@@ -52,8 +52,8 @@ impl Default for DispenseParameters {
     }
 }
 
-impl From<DispenseParameters> for Parameters {
-    fn from(value: DispenseParameters) -> Self {
+impl From<&DispenseParameters> for Parameters {
+    fn from(value: &DispenseParameters) -> Self {
         let retract_before = if value.retract_before {
             Some(value.retract_before_param)
         } else {
