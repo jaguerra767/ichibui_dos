@@ -72,6 +72,21 @@ fn get_image(filename: String) -> Response {
     tauri::ipc::Response::new(response)
 }
 
+#[tauri::command]
+fn log_in(pin: String) -> User {
+    let pins = Config::load().pins;
+    match pin.parse::<usize>() {
+        Ok(pin_num) => match pin_num {
+            num if num == pins.sudo => User::Admin,
+            num if num == pins.manager => User::Manager,
+            num if num == pins.operator => User::Operator,
+            _ => User::None,
+        },
+        Err(_) => User::None,
+    }
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let config = Config::load();
@@ -124,7 +139,8 @@ pub fn run() {
             get_dispense_count,
             update_current_ingredient,
             update_run_state,
-            update_ui_request
+            update_ui_request,
+            log_in
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

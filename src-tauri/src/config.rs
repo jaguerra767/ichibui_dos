@@ -47,6 +47,13 @@ pub struct SetpointConfig {
     pub filling_threshold: f64,
 }
 #[derive(Serialize, Deserialize, Debug)]
+pub struct Pins {
+    pub sudo: usize,
+    pub manager: usize,
+    pub operator: usize
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub phidget: PhidgetConfig,
     pub hatch: HatchConfig,
@@ -55,6 +62,7 @@ pub struct Config {
     pub addresses: Addresses,
     pub dispense: DispenseConfig,
     pub setpoint: SetpointConfig,
+    pub pins: Pins
 }
 
 impl Config {
