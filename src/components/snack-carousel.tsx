@@ -9,18 +9,32 @@ import {
 } from "./ui/carousel";
 
 import SvgViewer from './svg-viewer';
-import { Ingredient, User } from '@/types';
+import { DispenseType, Ingredient, RunState, User } from '@/types';
 import { useNavigate } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 
 interface SnackCarouselProps {
+    dispenseType: DispenseType
     snacks: Ingredient[]
     setSnack: (snack: Ingredient) => void,
     setUser: (user: User) => void
+
 }
 
-const SnackCarousel: React.FC<SnackCarouselProps> = ({snacks, setSnack, setUser}) => {
+const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setSnack, setUser}) => {
     const navigate = useNavigate()
-    const handleClick = (snack: Ingredient) => {
+    const handleClick = async (snack: Ingredient) => {
+        let state: RunState = RunState.Ready;
+        try {
+            if (dispenseType === DispenseType.Classic) {
+                state = RunState.RunningClassic;
+            } else if (dispenseType === DispenseType.LargeSmall) {
+                state = RunState.RunningSized;
+            }
+            await invoke("update_run_state", {state})
+        } catch(error){
+            console.error("Failed to send state")
+        }
         setSnack(snack);
         setUser(User.None)
         navigate('/dispense-screen');

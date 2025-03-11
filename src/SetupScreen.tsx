@@ -1,19 +1,20 @@
 import React from 'react';
-import { Ingredient, User } from './types';
+import { DispenseType, Ingredient, User } from './types';
 import SnackCarousel from './components/snack-carousel';
 
 
 interface SetupScreenProps{
+    dispenseType: DispenseType,
     snacks: Ingredient[],
     setIngredient: (snack: Ingredient) => void,
     setUser: (user: User) => void
 }
 
-const SetupScreen: React.FC<SetupScreenProps> = ({snacks, setIngredient, setUser}) => {
+const SetupScreen: React.FC<SetupScreenProps> = ({dispenseType, snacks, setIngredient, setUser}) => {
 
     return (
         <div className='relative'>
-                <SnackCarousel snacks={snacks} setSnack={setIngredient} setUser={setUser}/>
+                <SnackCarousel dispenseType={dispenseType} snacks={snacks} setSnack={setIngredient} setUser={setUser}/>
         </div>
         
   

@@ -12,7 +12,8 @@ import gear from '@/assets/gear-white.svg';
 import { Label } from '@radix-ui/react-dropdown-menu';
 
 
-import { DispenseType, User } from '@/types';
+import { DispenseType, RunState, User } from '@/types';
+import { invoke } from '@tauri-apps/api/core';
 
 interface SettingsMenuProps{
     currentUser: User,
@@ -24,7 +25,14 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({currentUser, currentDispense
     const superVisibility = currentUser === User.Admin || currentUser === User.Manager;
     const handleToggle = (checked: Boolean) => {
         setDispenseType(checked ? DispenseType.LargeSmall : DispenseType.Classic);
-        console.log(checked ? DispenseType.LargeSmall : DispenseType.Classic)
+    }
+
+    const handleButton = async (state: RunState) => {
+        try {
+            await invoke("update_run_state", {state});
+        } catch (error) {
+            console.error("Failed to set state:", error);
+        }
     }
     return (
         <DropdownMenu>
@@ -39,14 +47,14 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({currentUser, currentDispense
                         checked={currentDispenseType === DispenseType.LargeSmall}
                         onCheckedChange={handleToggle}
                         id="dispense-mode"/>
-                    <Label>Custom Dispense</Label>
+                    <Label>Sized Dispense</Label>
                 </DropdownMenuItem>}
-                <DropdownMenuItem onClick={() => console.log('Option 2 clicked')}>
+                <DropdownMenuItem onClick={() => handleButton(RunState.Cleaning)}>
                     <Button className='w-full'>
                         Clean Mode
                     </Button>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleButton(RunState.Emptying)}>
                 <Button className='w-full bg-destructive'>
                         Empty Hopper
                     </Button>

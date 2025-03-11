@@ -14,6 +14,7 @@ import {
 } from "./components/ui/card";
 import "react-simple-keyboard/build/css/index.css";
 import { Button } from "./components/ui/button";
+import { invoke } from "@tauri-apps/api/core";
 
 
 interface LogInProps {
@@ -21,23 +22,37 @@ interface LogInProps {
 }
 
 
-
 const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
-    const [otp, setOtp] = useState<string>('');
-    //const inputRef = useRef<HTMLInputElement>(null);
-    const navigate = useNavigate();
-
-    const test_pw = "1111";
-
-    const logIn = () => {
+  const [otp, setOtp] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const navigate = useNavigate();
+  
+  const logIn = async () => {
       console.log(otp);
-      if (otp === test_pw) {
-        console.log("Password Ok");
-        onUpdate(User.Admin);
-        navigate('/setup-screen');
+      setIsLoading(true);
+      
+      try {
+          // Call the Rust function via Tauri
+          const user: User = await invoke('log_in', { pin: otp });
+          
+          console.log("Login result:", user);
+          
+          // Check if login was successful
+          if (user !== User.None) {
+              onUpdate(user);
+              navigate('/setup-screen');
+          } else {
+              // Handle failed login
+              console.log("Invalid PIN");
+              // Optionally show an error message to the user
+              setOtp(''); // Clear the input
+          }
+      } catch (error) {
+          console.error("Login error:", error);
+      } finally {
+          setIsLoading(false);
       }
-
-    }
+  }
 
     return (
         <Card className="w-[350px]">
@@ -63,8 +78,8 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button className="bg-green-700" onClick={logIn}> Log In</Button>
-              <Button className="bg-destructive" onClick={() => navigate('/dispense-screen')}>Cancel</Button>
+              <Button className="bg-green-700" onClick={logIn} disabled={isLoading || otp.length === 0}> {isLoading ? "Logging in..." : "Log In"}</Button>
+              <Button className="bg-destructive" onClick={() => navigate('/dispense-screen')} disabled={isLoading}>Cancel</Button>
             </CardFooter>
         </Card>
     );

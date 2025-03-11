@@ -27,7 +27,12 @@ function App() {
   const [user, setUser] = useState<User>(User.None)
   const [dispenseType, setDispenseType] = useState<DispenseType>(DispenseType.Classic);
 
+
+
+
   useEffect(() => {
+    
+
     const fetchImage = async (filename: string) => {
         try {
             const data: ArrayBuffer = await invoke('get_image', {filename});
@@ -61,6 +66,7 @@ function App() {
             console.error("Failed to fetch ingredients:", err);
         } 
     };
+
     fetchIngredients();
 },[]);
 
@@ -72,7 +78,7 @@ function App() {
       <Header currentDispenseType ={dispenseType}  setDispenseType={setDispenseType} user={user}/>
         <Routes>
           <Route path="/" element={<Home setUser={setUser}/>}/>
-          <Route path="/setup-screen" element={<SetupScreen snacks={snacks} setIngredient={setSelectedIngredient} setUser={setUser}/>}/>
+          <Route path="/setup-screen" element={<SetupScreen dispenseType={dispenseType} snacks={snacks} setIngredient={setSelectedIngredient} setUser={setUser}/>}/>
           <Route path="/dispense-screen" element={<DispenseScreen snack={selectedIngredient} mode={dispenseType}/>}/>
         </Routes>
       </Router>

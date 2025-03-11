@@ -28,8 +28,9 @@ export enum DispenseType {
 
 
 export enum RunState {
-    Ready,
-    Running,
-    Cleaning,
-    Emptying,
+    Ready = "Ready",
+    RunningClassic = "RunningClassic",
+    RunningSized = "RunningSized",
+    Cleaning = "Cleaning",
+    Emptying = "Emptying",
 }
