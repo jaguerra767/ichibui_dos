@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Ingredient, UiRequest } from "./types";
 import SvgViewer from "./components/svg-viewer";
 import { Card, CardContent, CardFooter } from "./components/ui/card";
@@ -90,6 +90,3 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
 
 export default SizedModeDispense;
 
-function useEffect(arg0: () => () => void, arg1: never[]) {
-    throw new Error("Function not implemented.");
-}

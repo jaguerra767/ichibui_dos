@@ -5,7 +5,7 @@ import SvgViewer from "./components/svg-viewer";
 import { Button } from "./components/ui/button";
 import recycle from "./assets/recycle.svg"
 import { invoke } from "@tauri-apps/api/core";
-import { error } from "console";
+
 
 interface ClassicModeDispenseProps {
     snack: Ingredient | undefined
