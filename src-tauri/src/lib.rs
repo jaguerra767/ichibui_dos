@@ -133,7 +133,7 @@ pub fn run() {
             tauri::async_runtime::spawn({
                 async move {
                     scale = Scale::change_coefficients(scale, coefficients.to_vec());
-                    let scale = scale.connect().unwrap();;
+                    let scale = scale.connect().unwrap();
                     let _ = actor(scale, scale_rx).await;
                 }
             });
