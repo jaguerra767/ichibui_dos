@@ -56,7 +56,7 @@ impl Hatch {
         }
         let start_time = Instant::now();
         let mut interval = interval(Duration::from_millis(100));
-        self.motor.relative_move(HATCH_STROKE).await.unwrap();
+        let _ = self.motor.relative_move(HATCH_STROKE).await;
         while !self.close_input.get_state().await {
             if Instant::now() - start_time > HATCH_TIMEOUT {
                 self.motor.abrupt_stop().await;
