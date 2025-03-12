@@ -63,20 +63,11 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground min-h-screen;
+    @apply bg-slate-950 text-foreground min-h-screen;
   }
 }
 
 
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
 
 
 
