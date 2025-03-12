@@ -9,7 +9,7 @@ import {
 } from "./ui/carousel";
 
 import SvgViewer from './svg-viewer';
-import { DispenseType, Ingredient, RunState, User } from '@/types';
+import { DispenseType, Ingredient, IchibuState, User } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -24,16 +24,19 @@ interface SnackCarouselProps {
 const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setSnack, setUser}) => {
     const navigate = useNavigate()
     const handleClick = async (snack: Ingredient) => {
-        let state: RunState = RunState.Ready;
+        let state: IchibuState = IchibuState.Ready;
         try {
+
+            await invoke("update_current_ingredient", {snack: snack.id})
             if (dispenseType === DispenseType.Classic) {
-                state = RunState.RunningClassic;
+                state = IchibuState.RunningClassic;
             } else if (dispenseType === DispenseType.LargeSmall) {
-                state = RunState.RunningSized;
+                state = IchibuState.RunningSized;
             }
-            await invoke("update_run_state", {state})
+            console.log("Snack Selected updating state with: ", state, snack);
+            await invoke("update_run_state", {newState: state})
         } catch(error){
-            console.error("Failed to send state")
+            console.error("Failed to send state: ", error)
         }
         setSnack(snack);
         setUser(User.None)

@@ -1,6 +1,7 @@
 use config::Config;
 use control_components::components::scale::actor;
 use control_components::components::scale::Scale;
+use ichibu::ichibu_cycle;
 use ingredients::{read_ingredient_config, UiData};
 use io::initialize_controller;
 use serde::{Deserialize, Serialize};
@@ -75,14 +76,21 @@ fn get_image(filename: String) -> Response {
 #[tauri::command]
 fn log_in(pin: String) -> User {
     let pins = Config::load().pins;
-    match pin.parse::<usize>() {
-        Ok(pin_num) => match pin_num {
-            num if num == pins.sudo => User::Admin,
-            num if num == pins.manager => User::Manager,
-            num if num == pins.operator => User::Operator,
-            _ => User::None,
-        },
-        Err(_) => User::None,
+    if let Ok(pin_num) =  pin.parse::<usize>() {
+           if pin_num == pins.sudo{
+                println!("Super User, looking good today");
+                User::Admin
+           } else if pin_num == pins.manager {
+                println!("Manager, what are we going to dispense today?");
+               User::Manager
+           } else if pin_num == pins.operator {
+                println!("Operator, lets cook");
+                User::Operator
+           } else {
+                User::None
+           }
+    } else {
+        User::None
     }
 }
 
@@ -94,13 +102,16 @@ pub fn run() {
 
     let photo_eye = controller.get_digital_input(config.photo_eye.input_id);
 
+    
+
     tauri::Builder::default()
-        .manage(Mutex::new(state::AppData::new(photo_eye.clone())))
+        .manage(Mutex::new(state::AppData::new()))
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             let app_handle = app.app_handle();
 
             let coefficients = config.phidget.coefficients;
+ 
 
             //Lets spawn the scale
 
@@ -119,18 +130,47 @@ pub fn run() {
             //Routine to update io members of state that we need for the UI
             tauri::async_runtime::spawn({
                 let app_handle = app_handle.clone();
+                let scale_tx = scale_tx.clone();
                 async move {
+                    // Add a small delay to ensure the app is fully initialized
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     loop {
-                        let state = app_handle.state::<Mutex<state::AppData>>();
-                        update_node_level(state.clone(), empty_weight, scale_tx.clone()).await;
-                        update_pe_state(state, photo_eye.clone()).await;
+
+                        match app_handle.try_state::<Mutex<state::AppData>>() {
+                            Some(state) => {
+                                update_node_level(state.clone(), empty_weight, scale_tx.clone()).await;
+                                update_pe_state(state, photo_eye.clone()).await;
+                            },
+                            None => {
+                                println!("Waiting for state");
+                                continue
+                            },
+                        }
+                        // Add a small delay between updates
+                        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                     }
                 }
             });
 
-            tauri::async_runtime::spawn(async move {
-                //Existing Ichibu-os code runs here aka Controls
-            });
+         
+
+            tauri::async_runtime::spawn({
+            
+                let app_handle = app_handle.clone();
+                let scale_tx = scale_tx.clone();
+                async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                    let state = loop {
+                        //wait for state to become available
+                        match app_handle.try_state::<Mutex<state::AppData>>() {
+                            Some(state) => {
+                                break state;
+                            },
+                            None => tokio::time::sleep(std::time::Duration::from_millis(50)).await,
+                        }
+                    };
+                    ichibu_cycle(state, scale_tx.clone()).await;
+            }});
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

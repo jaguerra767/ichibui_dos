@@ -16,9 +16,9 @@ export interface Ingredient {
 
 export enum User {
     None = "None",
-    Admin = "ADMIN",
-    Manager = "MANAGER",
-    Operator = "OPERATOR"
+    Admin = "Admin",
+    Manager = "Manager",
+    Operator = "Operator"
 }
 
 export enum DispenseType {
@@ -27,10 +27,16 @@ export enum DispenseType {
 }
 
 
-export enum RunState {
+export enum IchibuState {
     Ready = "Ready",
     RunningClassic = "RunningClassic",
     RunningSized = "RunningSized",
     Cleaning = "Cleaning",
     Emptying = "Emptying",
+}
+
+export enum UiRequest {
+    None = "None",
+    SmallDispense = "SmallDispense",
+    RegularDispense = "RegularDispense"
 }

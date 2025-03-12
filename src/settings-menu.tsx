@@ -12,7 +12,7 @@ import gear from '@/assets/gear-white.svg';
 import { Label } from '@radix-ui/react-dropdown-menu';
 
 
-import { DispenseType, RunState, User } from '@/types';
+import { DispenseType, IchibuState, User } from '@/types';
 import { invoke } from '@tauri-apps/api/core';
 
 interface SettingsMenuProps{
@@ -27,9 +27,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({currentUser, currentDispense
         setDispenseType(checked ? DispenseType.LargeSmall : DispenseType.Classic);
     }
 
-    const handleButton = async (state: RunState) => {
+    const handleButton = async (state: IchibuState) => {
         try {
-            await invoke("update_run_state", {state});
+            await invoke("update_run_state", {newState: state});
         } catch (error) {
             console.error("Failed to set state:", error);
         }
@@ -49,14 +49,19 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({currentUser, currentDispense
                         id="dispense-mode"/>
                     <Label>Sized Dispense</Label>
                 </DropdownMenuItem>}
-                <DropdownMenuItem onClick={() => handleButton(RunState.Cleaning)}>
+                <DropdownMenuItem onClick={() => handleButton(IchibuState.Cleaning)}>
                     <Button className='w-full'>
                         Clean Mode
                     </Button>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleButton(RunState.Emptying)}>
+                <DropdownMenuItem onClick={() => handleButton(IchibuState.Emptying)}>
+                <Button className='w-full bg-blue-500'>
+                        Empty Hopper Start
+                    </Button>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleButton(IchibuState.Cleaning)}>
                 <Button className='w-full bg-destructive'>
-                        Empty Hopper
+                        Empty Hopper Stop
                     </Button>
                 </DropdownMenuItem>
             </DropdownMenuContent>

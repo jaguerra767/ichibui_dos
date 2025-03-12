@@ -1,14 +1,48 @@
-import React from "react";
-import { Ingredient } from "./types";
+import React, { useState } from "react";
+import { Ingredient, UiRequest } from "./types";
 import SvgViewer from "./components/svg-viewer";
 import { Card, CardContent, CardFooter } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import recycle from "./assets/recycle.svg"
+import { invoke } from "@tauri-apps/api/core";
 
 interface SizedModeDispenseProps{
     snack: Ingredient | undefined
 }
 const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
+    const [bowlCount, setBowlCount] = useState<Number>(0);
+    const [size, setSize] = useState<UiRequest>(UiRequest.None);
+    const fetchBowlStatus = async () => {
+        try{
+            const bowls = await invoke<Number>("get_dispense_count");
+            setBowlCount(bowls);
+        } catch (error) {
+            console.error("Failed to update bowl count: ", error);
+        }
+        
+    }
+
+    useEffect(() => {
+        // Fetch immediately on component mount
+        fetchBowlStatus();
+        
+        // Set up interval for periodic updates (every 2 seconds)
+        const intervalId = setInterval(() => {
+          fetchBowlStatus();
+        }, 1000); // Adjust timing as needed
+        
+        // Clean up interval on component unmount
+        return () => clearInterval(intervalId);
+      }, []);
+
+    const handleClick = async (size: UiRequest) => {
+        try {
+            await invoke("update_ui_request", {uiRequest: size});
+            console.log("Snack Selected updating state with: ", size);
+        } catch(error){
+            console.error("Failed to send state: ", error)
+        }
+    }
     return (
         <div className="flex flex-col items-center justify-center h-full">
         <Card className="w-full max-w-md bg-slate-950">
@@ -20,20 +54,20 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
                     <div className="flex space-x-2 w-full">
                         <Button  
                             className="w-1/2 bg-blue-600 hover:bg-blue-700"
-                            onClick={() => console.log("Dispense a lil bit!")}
+                            onClick={() => setSize(UiRequest.SmallDispense)}
                         >
                             Just a tad!
                         </Button>
                         <Button  
                             className="w-1/2 bg-blue-600 hover:bg-blue-700"
-                            onClick={() => console.log("Dispense a lot!")}
+                            onClick={() => setSize(UiRequest.RegularDispense) }
                         >
                             No ones looking!
                         </Button>
                     </div>
                     <Button  
                         className="w-full bg-green-600 hover:bg-green-700"
-                        onClick={() => console.log("Dispense!")}
+                        onClick={() => handleClick(size)}
                     >
                         Lets Ichibu!
                     </Button>
@@ -46,7 +80,7 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
                             alt="Recycle" 
                             className="w-6 h-6"
                         />
-                    <span className="text-white">99 plastic bags saved</span>
+                    <span className="text-white">{bowlCount.toString()} plastic bags saved!</span>
                 </div>
             </CardFooter>
         </Card>
@@ -55,3 +89,7 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
 }
 
 export default SizedModeDispense;
+
+function useEffect(arg0: () => () => void, arg1: never[]) {
+    throw new Error("Function not implemented.");
+}

@@ -30,6 +30,7 @@ impl Hatch {
         self.motor.set_deceleration(250.).await;
     }
     pub async fn open(&mut self) -> Result<(), HatchError> {
+        println!("Opening Hatch!");
         if self.open_input.get_state().await {
             return Ok(());
         }
@@ -45,13 +46,14 @@ impl Hatch {
             interval.tick().await;
         }
         self.motor.abrupt_stop().await;
+        println!("Hatch Opened");
         Ok(())
     }
     pub async fn close(&mut self) -> Result<(), HatchError> {
+        println!("Closing Hatch!");
         if self.close_input.get_state().await {
             return Ok(());
         }
-
         let start_time = Instant::now();
         let mut interval = interval(Duration::from_millis(100));
         self.motor.relative_move(HATCH_STROKE).await.unwrap();
@@ -64,6 +66,7 @@ impl Hatch {
             interval.tick().await;
         }
         self.motor.abrupt_stop().await;
+        println!("Hatch Closed");
         Ok(())
     }
 }

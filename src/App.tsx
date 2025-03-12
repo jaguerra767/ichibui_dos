@@ -50,6 +50,7 @@ function App() {
             const images: string[] = [];
 
             for (const d of data) {
+              console.log(d);
               const image = await fetchImage(d.img);
               images.push(`data:image/svg+xml;base64,${image}`);
             }

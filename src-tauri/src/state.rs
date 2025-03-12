@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     data_logging::{Data, DataAction},
-    ingredients::Ingredient,
+    ingredients::{read_ingredient_config, Ingredient},
     io::{self, PhotoEyeState},
-    UiRequest,
+    UiRequest, HOME_DIRECTORY,
 };
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
@@ -41,14 +41,14 @@ pub struct AppData {
 }
 
 impl AppData {
-    pub async fn new(photo_eye: DigitalInput) -> Self {
+    pub fn new() -> Self {
         let (database, bowl_count) = io::initialize_database();
-        let pe_state = io::photo_eye_state(&photo_eye).await;
+       // let pe_state = io::photo_eye_state(&photo_eye).await;
         Self {
             state: IchibuState::Ready,
             ui_request: UiRequest::None,
             node_level: NodeLevel::Empty,
-            pe_state,
+            pe_state: PhotoEyeState::Unblocked,
             database,
             bowl_count,
             current_snack: None,
@@ -120,17 +120,23 @@ pub async fn update_node_level(
 }
 
 #[tauri::command]
-pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack: Ingredient) {
-    state.lock().unwrap().update_current_snack(snack);
+pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack: usize) {
+    if let Ok(res) = read_ingredient_config(HOME_DIRECTORY.as_str()) {
+        if let Some(ingredient) = res.ingredients.iter().find(|ing| ing.id == snack) {
+            state.lock().unwrap().update_current_snack(ingredient.clone());
+        }
+    }
 }
 
 #[tauri::command]
 pub fn update_run_state(state: tauri::State<'_, Mutex<AppData>>, new_state: IchibuState) {
+    println!("Update Run State called, new state: {:?}", new_state);
     state.lock().unwrap().update_state(new_state);
 }
 
 #[tauri::command]
 pub fn update_ui_request(state: tauri::State<'_, Mutex<AppData>>, ui_request: UiRequest) {
+    println!("Update UI Request Called");
     state.lock().unwrap().update_ui_request(ui_request);
 }
 

@@ -125,5 +125,8 @@ pub fn read_ingredient_config(root_dir: &str) -> Result<Ingredients, Box<dyn std
 fn test_read_ingredient_config() {
     use crate::HOME_DIRECTORY;
     let config = read_ingredient_config(HOME_DIRECTORY.as_str());
+    if config.is_err(){
+        println!("{:?}", config);
+    }
     assert_ne!(config.is_err(), true)
 }

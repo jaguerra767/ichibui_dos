@@ -8,7 +8,7 @@ use crate::data_logging::Data;
 use crate::hatch::Hatch;
 use crate::HOME_DIRECTORY;
 
-const DB_PATH: &str = ".config/ichibu/data/data.db";
+const DB_PATH: &str = ".config/ichibu/data/";
 
 #[derive(Debug, Default, Clone)]
 

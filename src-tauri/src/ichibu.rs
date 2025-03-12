@@ -15,17 +15,18 @@ use crate::UiRequest;
 
 pub async fn ichibu_cycle(
     state: tauri::State<'_, Mutex<AppData>>,
-    dispenser_motor_id: usize,
     scale_tx: Sender<ScaleCmd>,
 ) {
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
-
-    let dispenser = DispenseHandle::new(cc_handle.get_motor(dispenser_motor_id).clone(), scale_tx);
+    let motor_id = config.motor.id;
+    let dispenser = DispenseHandle::new(cc_handle.get_motor(motor_id).clone(), scale_tx);
 
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
+    let _ = hatch.close().await;
+    println!("Starting cycle loop");
     run_cycle_loop(state, &dispenser, &mut hatch).await;
 }
 
@@ -36,6 +37,7 @@ async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
     ) {
         sleep(Duration::from_millis(250)).await;
     }
+    println!("Photoeye Blocked!");
 }
 
 async fn run_cycle_loop(
@@ -52,11 +54,22 @@ async fn run_cycle_loop(
             (ichibu_state, pe_state)
         };
         match ichibu_state {
-            IchibuState::Cleaning => dispenser.disable().await,
+            IchibuState::Cleaning => {
+                if hatch.open().await.is_err() {
+                    log::error!("Hatch Failed To Open")
+                }
+                dispenser.disable().await
+            },
             IchibuState::Emptying => handle_emptying_state(dispenser, hatch, pe_state).await,
-            IchibuState::Ready => todo!(),
-            IchibuState::RunningClassic | IchibuState::RunningSized => handle_running_state(state, dispenser, hatch).await,
+            IchibuState::Ready => {
+                tokio::time::sleep(Duration::from_millis(50)).await
+            },
+            IchibuState::RunningClassic | IchibuState::RunningSized => {
+                
+                handle_running_state(state, dispenser, hatch).await
+            },
         }
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
@@ -68,7 +81,10 @@ async fn handle_running_state(
     //Make sure we don't keep the mutex lock as dispense blocks...
 
     let snack = { state.lock().unwrap().get_snack().unwrap().clone() };
-
+    if hatch.close().await.is_err() {
+        log::error!("Hatch Failed to Close");
+    }
+   
     let setpoint = {
         let ichibu_state = state.lock().unwrap().get_state();
         if matches!(ichibu_state, IchibuState::RunningClassic) {
@@ -84,16 +100,29 @@ async fn handle_running_state(
     });
 
     let parameters = Parameters::from(&snack.dispense_parameters);
+    
 
     dispenser.launch_dispense(setpoint, parameters).await;
 
     handle_user_selection(state.clone(), dispenser, &snack).await;
 
-    wait_for_pe(state.clone()).await;
-    hatch.open().await.unwrap();
-    sleep(Duration::from_millis(1000)).await;
-    hatch.close().await.unwrap();
+    let ichibu_state = {
+        let state = state.lock().unwrap();
+        let ichibu_state = state.get_state();
+       ichibu_state
+    };
 
+    if matches!(ichibu_state, IchibuState::Cleaning) {
+        return;
+    }
+    if matches!(ichibu_state, IchibuState::Emptying) {
+        return;
+    }
+    
+    if hatch.open().await.is_err() {
+        log::error!("Hatch open timed out!");
+    }
+    sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
     state.log_dispense();
     state.reset_ui_request();
@@ -111,11 +140,17 @@ async fn handle_user_selection(
             let ichibu_state = state.get_state();
             (request, ichibu_state)
         };
+        if matches!(ichibu_state, IchibuState::Cleaning) {
+            return;
+        }
+        if matches!(ichibu_state, IchibuState::Emptying) {
+            return;
+        }
         match request {
             UiRequest::None => sleep(Duration::from_millis(250)).await,
             UiRequest::SmallDispense => break,
             UiRequest::RegularDispense => {
-                if matches!(ichibu_state, IchibuState::RunningClassic) {
+                if matches!(ichibu_state, IchibuState::RunningSized) {
                     let sp = snack.max_setpoint - snack.min_setpoint;
                     let setpoint = Setpoint::Weight(WeightedDispense {
                         setpoint: sp as f64,
@@ -124,11 +159,12 @@ async fn handle_user_selection(
                     dispenser
                         .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
                         .await;
-                    break;
                 }
+                break;
             }
         }
     }
+    wait_for_pe(state.clone()).await;
 }
 
 async fn handle_emptying_state(
@@ -136,7 +172,9 @@ async fn handle_emptying_state(
     hatch: &mut Hatch,
     pe_state: PhotoEyeState,
 ) {
-    hatch.open().await.unwrap();
+    if hatch.open().await.is_err() {
+        log::error!("Hatch Failed to Open")
+    }
     if matches!(pe_state, PhotoEyeState::Blocked) {
         dispenser.empty().await;
     } else {

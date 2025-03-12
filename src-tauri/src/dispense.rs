@@ -48,6 +48,7 @@ impl Dispense {
                 parameters,
                 respond_to,
             } => {
+                let _ = self.motor.enable().await;
                 Dispenser::new(
                     self.motor.clone(),
                     setpoint,
