@@ -120,6 +120,9 @@ pub fn run() {
         .manage(Mutex::new(state::AppData::new()))
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
+            let main_window = app.get_webview_window("main").unwrap();
+            main_window.set_cursor_visible(false).unwrap();
+
             let app_handle = app.app_handle();
 
             let coefficients = config.phidget.coefficients;
