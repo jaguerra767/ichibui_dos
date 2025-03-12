@@ -14,8 +14,7 @@
       {
         "fullscreen": true,
         "decorations": false,
-        "alwaysOnTop":true,
-        "kiosk":true,
+        "alwaysOnTop":true
       }
     ],
     "security": {

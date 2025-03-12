@@ -44,7 +44,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
     }
     return (
         <div className="w-full">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-5xl">
             <Carousel 
                 opts={{
                     align: "start", 
@@ -54,7 +54,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                 className="w-full" 
                 orientation="vertical"
             >
-                <CarouselContent className="h-[600px] space-y-4 py-10">
+                <CarouselContent className="h-full space-y-2 py-10">
                     {snacks.map((snack, index) => (
                         <CarouselItem 
                             key={index} 
@@ -63,7 +63,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                         >
                             <Card className="overflow-hidden w-fit mx-auto">
                                 <CardContent className="flex items-center justify-center bg-slate-950">
-                                    <SvgViewer base64svg={snack.base64_img} height="h-60"/>
+                                    <SvgViewer base64svg={snack.base64_img} height="h-56"/>
                                 </CardContent>
                             </Card>
                         </CarouselItem>

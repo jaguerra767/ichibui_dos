@@ -17,7 +17,7 @@ const Header: React.FC<SettingsMenuProps> = ({user, currentDispenseType, setDisp
     const sudoLoggedIn = user === User.Admin || user === User.Manager || user === User.Operator
     const navigate = useNavigate()
     return (
-        <header className='bg-slate-950 absolute top-0 left-0 w-[600px] h-20'>
+        <header className='bg-slate-950 absolute top-0 left-0 w-full h-20'>
             <img src={logo} alt="Caldo logo" className='absolute top-2 h-16 w-full'/>
                 <div className='absolute top-4 right-0 h-12'>
                     {sudoLoggedIn && <SettingsMenu currentDispenseType={currentDispenseType} setDispenseType={setDispenseType} currentUser={user}/>}
