@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "visible": false,
         "fullscreen": true,
         "decorations": false,
         "alwaysOnTop":true
