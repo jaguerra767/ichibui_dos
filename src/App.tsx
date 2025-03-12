@@ -10,13 +10,6 @@ import { DispenseType, Ingredient, UiData, User } from './types';
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
-import { getCurrentWindow } from '@tauri-apps/api/window';
-
-export async function appRefreshDisplay() {
-  await getCurrentWindow().hide();
-  await new Promise(resolve => setTimeout(resolve, 4000));
-  await getCurrentWindow().show();
-}
 
 const ArrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   let binary = "";
@@ -75,7 +68,6 @@ function App() {
         } 
     };
     fetchIngredients();
-    appRefreshDisplay();
 },[]);
 
 
