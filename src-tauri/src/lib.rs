@@ -9,6 +9,7 @@ use state::update_node_level;
 use state::update_pe_state;
 use state::{get_dispense_count, update_current_ingredient, update_run_state, update_ui_request};
 use std::env;
+use std::env::set_var;
 use std::sync::{LazyLock, Mutex};
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
@@ -97,6 +98,17 @@ fn log_in(pin: String) -> User {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+
+
+    #[cfg(target_os = "linux")]
+    {
+        set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    }
+
+
+
+
     let config = Config::load();
     let controller = initialize_controller(&config);
 
