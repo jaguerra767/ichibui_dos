@@ -14,7 +14,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export async function appRefreshDisplay() {
   await getCurrentWindow().hide();
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 4000));
   await getCurrentWindow().show();
 }
 
