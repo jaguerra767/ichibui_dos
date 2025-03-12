@@ -45,7 +45,7 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
     }
     return (
         <div className="flex flex-col items-center justify-center h-full">
-        <Card className="w-full max-w-md bg-slate-950">
+        <Card className="w-full max-w-lg bg-slate-950">
             <CardContent className="flex flex-col items-center space-y-4 p-6">
                 <div className="mb-4">
                     <SvgViewer base64svg={snack?.base64_img} height="h-96"/>
@@ -53,34 +53,34 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
                 <div className="w-full space-y-2">
                     <div className="flex space-x-2 w-full">
                         <Button  
-                            className="w-1/2 bg-blue-600 hover:bg-blue-700"
+                            className="w-1/2 h-[100px] text-2xl bg-blue-600 hover:bg-blue-700"
                             onClick={() => setSize(UiRequest.SmallDispense)}
                         >
                             Just a tad!
                         </Button>
                         <Button  
-                            className="w-1/2 bg-blue-600 hover:bg-blue-700"
+                            className="w-1/2 h-[100px]  text-2xl bg-blue-600 hover:bg-blue-700"
                             onClick={() => setSize(UiRequest.RegularDispense) }
                         >
-                            No ones looking!
+                            Regular!
                         </Button>
                     </div>
                     <Button  
-                        className="w-full bg-green-600 hover:bg-green-700"
+                        className="w-full h-[120px]  text-4xl bg-green-600 hover:bg-green-700"
                         onClick={() => handleClick(size)}
                     >
-                        Lets Ichibu!
+                        Lets Go!
                     </Button>
                 </div>
             </CardContent>
-            <CardFooter className="flex items-center justify-center p-4">
+            <CardFooter className="flex h-[100px] items-center justify-center p-4">
                     <div className="flex items-center space-x-2">
                         <img 
                             src={recycle }
                             alt="Recycle" 
-                            className="w-6 h-6"
+                            className="w-10 h-10"
                         />
-                    <span className="text-white">{bowlCount.toString()} plastic bags saved!</span>
+                    <span className="text-white text-2xl">{bowlCount.toString()} plastic bags saved!</span>
                 </div>
             </CardFooter>
         </Card>

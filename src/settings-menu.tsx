@@ -37,30 +37,33 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({currentUser, currentDispense
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button className='bg-slate-950'> 
+                <Button className='bg-slate-950 h-20'> 
                     <img src={gear} alt='settings' className='h-10'></img>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className='bg-gray-600'>
+            <DropdownMenuContent className='bg-gray-600 h-96'>
                 {superVisibility && <DropdownMenuItem onClick={() => console.log('Option 1 clicked')}>
+                    <div className='flex items-center space-x-2' >
                     <Switch 
                         checked={currentDispenseType === DispenseType.LargeSmall}
                         onCheckedChange={handleToggle}
                         id="dispense-mode"/>
-                    <Label>Sized Dispense</Label>
+                    <Label className='text-xl font-bold'>Sized Dispense</Label>
+                    </div>
+                    
                 </DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => handleButton(IchibuState.Cleaning)}>
-                    <Button className='w-full'>
+                    <Button className='w-full h-20'>
                         Clean Mode
                     </Button>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleButton(IchibuState.Emptying)}>
-                <Button className='w-full bg-blue-500'>
+                <Button className='w-full h-20 bg-blue-500'>
                         Empty Hopper Start
                     </Button>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleButton(IchibuState.Cleaning)}>
-                <Button className='w-full bg-destructive'>
+                <Button className='w-full h-20 bg-destructive'>
                         Empty Hopper Stop
                     </Button>
                 </DropdownMenuItem>

@@ -55,15 +55,15 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
   }
 
     return (
-        <Card className="w-[350px]">
+        <Card className="w-[700px] h-[700px]">
             <CardHeader>
                 <CardTitle>Log In</CardTitle>
-                <CardDescription>Enter your six digit pin</CardDescription>
+                <CardDescription>Enter Pin Number</CardDescription>
             </CardHeader>
             <CardContent>
               <div style={{ textAlign: "center" }}>
                 <input value={otp} readOnly placeholder="Enter numbers" />
-                <div style={{ width: "300px", margin: "auto" }}>
+                <div style={{ width: "500px", height: "400px", margin: "auto" }}>
                   <Keyboard
                     onChange={setOtp}
                       layout={{
@@ -78,8 +78,8 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button className="bg-green-700" onClick={logIn} disabled={isLoading || otp.length === 0}> {isLoading ? "Logging in..." : "Log In"}</Button>
-              <Button className="bg-destructive" onClick={() => navigate('/dispense-screen')} disabled={isLoading}>Cancel</Button>
+              <Button className=" m-auto text-4xl bg-green-700 w-[200px] h-[100px]" onClick={logIn} disabled={isLoading || otp.length === 0}> {isLoading ? "Logging in..." : "Log In"}</Button>
+              <Button className="m-auto text-4xl bg-destructive w-[200px] h-[100px]" onClick={() => navigate('/dispense-screen')} disabled={isLoading}>Cancel</Button>
             </CardFooter>
         </Card>
     );

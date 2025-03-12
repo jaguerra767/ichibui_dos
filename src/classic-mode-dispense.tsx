@@ -53,19 +53,19 @@ const ClassicModeDispense: React.FC<ClassicModeDispenseProps> =({snack}) => {
                 </div>
                 <div className="w-full space-y-2">
                     <Button  
-                        className="w-full bg-green-600 hover:bg-green-700"
+                        className="w-full h-[120px] bg-green-600 hover:bg-green-700"
                         onClick={() => handleClick()}
                     >
-                        Lets Ichibu!
+                        Lets Go!
                     </Button>
                 </div>
             </CardContent>
-            <CardFooter className="flex items-center justify-center p-4">
+            <CardFooter className="flex h-[100px] items-center justify-center p-4">
                     <div className="flex items-center space-x-2">
                         <img 
                             src={recycle }
                             alt="Recycle" 
-                            className="w-6 h-6"
+                            className="w-10 h-10"
                         />
                     <span className="text-white">{bowlCount.toString()} plastic bags saved!</span>
                 </div>
