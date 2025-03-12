@@ -74,8 +74,8 @@ function App() {
             console.error("Failed to fetch ingredients:", err);
         } 
     };
-    appRefreshDisplay();
     fetchIngredients();
+    appRefreshDisplay();
 },[]);
 
 
