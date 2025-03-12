@@ -12,9 +12,10 @@
   "app": {
     "windows": [
       {
-        "title": "ichibu",
-        "width": 800,
-        "height": 600
+        "fullscreen": true,
+        "decorations": false,
+        "alwaysOnTop":true,
+        "kiosk":true,
       }
     ],
     "security": {
