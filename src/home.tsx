@@ -11,7 +11,7 @@ const Home: React.FC<HomeProps> = ({setUser}) => {
 
 
     return (
-    <div className="relative flex items-center justify-center">
+    <div className="flex items-center justify-center py-72">
         <LogIn onUpdate={setUser}></LogIn>
     </div>
     );

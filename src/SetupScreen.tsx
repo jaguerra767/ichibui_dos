@@ -13,7 +13,7 @@ interface SetupScreenProps{
 const SetupScreen: React.FC<SetupScreenProps> = ({dispenseType, snacks, setIngredient, setUser}) => {
 
     return (
-        <div className='relative'>
+        <div className='py-40'>
                 <SnackCarousel dispenseType={dispenseType} snacks={snacks} setSnack={setIngredient} setUser={setUser}/>
         </div>
         

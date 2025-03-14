@@ -73,8 +73,7 @@ function App() {
 
 
   return (
-    <main className="container min-h-screen w-full bg-slate-950">
-      
+    <main className="h-full w-full bg-slate-950">
       <Router>
       <Header currentDispenseType ={dispenseType}  setDispenseType={setDispenseType} user={user}/>
         <Routes>

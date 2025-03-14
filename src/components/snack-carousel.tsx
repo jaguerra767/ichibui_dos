@@ -54,7 +54,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                 className="w-full" 
                 orientation="vertical"
             >
-                <CarouselContent className="h-[1000px] space-y-1 py-1">
+                <CarouselContent className="h-[900px] space-y-1 py-1">
                     {snacks.map((snack, index) => (
                         <CarouselItem 
                             key={index} 
