@@ -37,7 +37,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({currentUser, currentDispense
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button className='bg-slate-950 h-20'> 
+                <Button className='bg-slate-950 active:bg-slate-950 hover:bg-slate-950 h-20'> 
                     <img src={gear} alt='settings' className='h-10'></img>
                 </Button>
             </DropdownMenuTrigger>

@@ -73,7 +73,7 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
                         default: ["1 2 3", "4 5 6", "7 8 9", "0 {bksp}"]
                       }}
                       display={{
-                        "{bksp}": "⌫"
+                        "{bksp}": "del"
                       }}
                       buttonTheme={[
                         {
@@ -81,7 +81,7 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
                           buttons: "1 2 3 4 5 6 7 8 9 0",
                         },
                         {
-                          class: "text-6xl", // Tailwind classes for all keys
+                          class: "text-3xl", // Tailwind classes for all keys
                           buttons: "{bksp}",
                         },
                       ]}

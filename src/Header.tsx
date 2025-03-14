@@ -23,7 +23,7 @@ const Header: React.FC<SettingsMenuProps> = ({user, currentDispenseType, setDisp
                     {sudoLoggedIn && <SettingsMenu currentDispenseType={currentDispenseType} setDispenseType={setDispenseType} currentUser={user}/>}
                 </div>
                 <div className='absolute top-4 left-0 h-12'>
-                    {<Button className='bg-slate-950' onClick={() => navigate('/')}>
+                    {<Button className='bg-slate-950 hover:bg-slate-950 active:bg-slate-950' onClick={() => navigate('/')}>
                         <img className='h-10' src={home} alt='home'></img>
                     </Button>}
                 </div>
