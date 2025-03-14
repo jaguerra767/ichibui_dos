@@ -57,7 +57,11 @@ pub fn initialize_controller(config: &Config) -> Controller {
             },
         ],
     );
-    tauri::async_runtime::spawn(controller_client);
+    tauri::async_runtime::spawn(async move {
+        if let Err(_) = controller_client.await {
+            log::warn!("No motor/io controller connected, running in demo mode");
+        }
+    });
     controller
 }
 

@@ -19,7 +19,6 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
         } catch (error) {
             console.error("Failed to update bowl count: ", error);
         }
-        
     }
 
     useEffect(() => {
@@ -48,7 +47,7 @@ const SizedModeDispense: React.FC<SizedModeDispenseProps> =({snack}) => {
         <Card className="w-full max-w-lg bg-slate-950">
             <CardContent className="flex flex-col items-center space-y-4 p-6">
                 <div className="mb-4">
-                    <SvgViewer base64svg={snack?.base64_img} height="h-96"/>
+                    <SvgViewer base64svg={snack?.base64_img ?? ""}/>
                 </div>
                 <div className="w-full space-y-2">
                     <div className="flex space-x-2 w-full">

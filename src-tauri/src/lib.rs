@@ -132,12 +132,18 @@ pub fn run() {
 
             let (scale_tx, scale_rx) = channel(10);
 
-            let mut scale = Scale::new(config.phidget.sn);
+           
             tauri::async_runtime::spawn({
                 async move {
+                    let mut scale = Scale::new(config.phidget.sn);
                     scale = Scale::change_coefficients(scale, coefficients.to_vec());
-                    let scale = scale.connect().unwrap();
-                    let _ = actor(scale, scale_rx).await;
+                    if let Ok(scale) = scale.connect() {
+                       if let Err(e) = actor(scale, scale_rx).await {
+                            log::error!("Scale runtime error: {}",e);
+                       }
+                    } else {
+                        log::warn!("Launching in demo mode");
+                    }
                 }
             });
 

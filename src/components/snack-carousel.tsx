@@ -8,7 +8,7 @@ import {
     CarouselPrevious 
 } from "./ui/carousel";
 
-import SvgViewer from './svg-viewer';
+
 import { DispenseType, Ingredient, IchibuState, User } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
@@ -54,16 +54,17 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                 className="w-full" 
                 orientation="vertical"
             >
-                <CarouselContent className="h-full space-y-2 py-10">
+                <CarouselContent className="h-[1000px] space-y-1 py-1">
                     {snacks.map((snack, index) => (
                         <CarouselItem 
                             key={index} 
+        
                             onClick={() => handleClick(snack)} 
                             className="basis-1/2"
                         >
                             <Card className="overflow-hidden w-fit mx-auto">
                                 <CardContent className="flex items-center justify-center bg-slate-950">
-                                    <SvgViewer base64svg={snack.base64_img} height="h-56"/>
+                                    <img src={snack.base64_img} alt="snack" className='h-96 w-full'></img>
                                 </CardContent>
                             </Card>
                         </CarouselItem>

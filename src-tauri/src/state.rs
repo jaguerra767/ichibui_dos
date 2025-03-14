@@ -108,15 +108,14 @@ pub async fn update_node_level(
     let (send, recv) = oneshot::channel();
     let msg = ScaleCmd(send);
     let _ = scale_tx.send(msg).await;
-    let weight = recv.await.expect("Channel Dropped");
-
-    let node_level = if weight > empty_weight {
-        NodeLevel::Filled
-    } else {
-        NodeLevel::Empty
-    };
-
-    state.lock().unwrap().node_level = node_level;
+    if let Ok(weight) = recv.await {
+        let node_level = if weight > empty_weight {
+            NodeLevel::Filled
+        } else {
+            NodeLevel::Empty
+        };
+        state.lock().unwrap().node_level = node_level;
+    }
 }
 
 #[tauri::command]
@@ -143,4 +142,12 @@ pub fn update_ui_request(state: tauri::State<'_, Mutex<AppData>>, ui_request: Ui
 #[tauri::command]
 pub fn get_dispense_count(state: tauri::State<'_, Mutex<AppData>>) -> usize {
     state.lock().unwrap().bowl_count as usize
+}
+
+#[tauri::command]
+pub fn get_pe_blocked(state: tauri::State<'_, Mutex<AppData>>) -> bool {
+    match state.lock().unwrap().pe_state {
+        PhotoEyeState::Blocked => true,
+        PhotoEyeState::Unblocked => false,
+    }
 }

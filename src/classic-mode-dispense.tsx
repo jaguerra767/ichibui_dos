@@ -49,7 +49,7 @@ const ClassicModeDispense: React.FC<ClassicModeDispenseProps> =({snack}) => {
         <Card className="w-full max-w-md bg-slate-950">
             <CardContent className="flex flex-col items-center space-y-4 p-6">
                 <div className="mb-4">
-                    <SvgViewer base64svg={snack?.base64_img} height="h-96"/>
+                    <SvgViewer base64svg={snack?.base64_img ?? ""}/>
                 </div>
                 <div className="w-full space-y-2">
                     <Button  
@@ -63,7 +63,7 @@ const ClassicModeDispense: React.FC<ClassicModeDispenseProps> =({snack}) => {
             <CardFooter className="flex h-[100px] items-center justify-center p-4">
                     <div className="flex items-center space-x-2">
                         <img 
-                            src={recycle }
+                            src={ recycle }
                             alt="Recycle" 
                             className="w-10 h-10"
                         />
