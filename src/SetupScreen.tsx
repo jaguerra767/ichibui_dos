@@ -13,7 +13,7 @@ interface SetupScreenProps{
 const SetupScreen: React.FC<SetupScreenProps> = ({dispenseType, snacks, setIngredient, setUser}) => {
 
     return (
-        <div className='py-40'>
+        <div className='flex items-center justify-center h-screen'>
                 <SnackCarousel dispenseType={dispenseType} snacks={snacks} setSnack={setIngredient} setUser={setUser}/>
         </div>
         

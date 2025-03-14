@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "fullscreen": false,
+        "fullscreen": true,
         "decorations": false,
         "alwaysOnTop":true
       }

@@ -98,20 +98,20 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
 
 
     return (
-        <div>
+        <div className="px-10 py-56">
              <SvgViewer base64svg={snack?.base64_img ?? ""}/>
              <div className="w-full space-y-2">
                 {
                     smallLargeModeOn &&
                     <div className="flex space-x-2 w-full">
                         <Button  
-                            className="w-1/2 h-[100px] text-2xl bg-blue-600 hover:bg-blue-700"
+                            className="w-1/2 h-[100px] text-2xl bg-blue-600 hover:bg-blue-950"
                             onClick={() => setSize(UiRequest.SmallDispense)}
                         >
                             SM
                         </Button>
                         <Button  
-                            className="w-1/2 h-[100px]  text-2xl bg-blue-600 hover:bg-blue-700"
+                            className="w-1/2 h-[100px]  text-2xl bg-blue-600 hover:bg-blue-950"
                             onClick={() => setSize(UiRequest.RegularDispense) }
                         >
                             LG
@@ -125,13 +125,13 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                     >
                         {getButtonText()}
                     </Button>
-                    <div className="flex items-center justify-center space-x-2">
+                    <div className="flex items-center justify-center space-x-2 py-96">
                         <img 
                             src={recycle }
                             alt="Recycle" 
-                            className="w-10 h-10"
+                            className="w-20 h-20 px-1"
                         />
-                    <span className="text-white text-2xl">{bowlCount.toString()} plastic bags saved!</span>
+                    <span className="text-white text-6xl">{bowlCount.toString()} plastic bags saved!</span>
                 </div>
                 </div>
         </div>

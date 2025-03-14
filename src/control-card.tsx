@@ -27,7 +27,7 @@ const ControlCard: React.FC<ControlCardProps> = ({image, setUser}) => {
             
             <CardContent className="h-1/2 flex flex-col justify-center p-4">
                 <div className="h-1/2">
-                    <SvgViewer base64svg={image} height="h-56"></SvgViewer>
+                    <SvgViewer base64svg={image ?? ""}></SvgViewer>
                 </div>
                 <Button  
                 className="w-full bg-green-600"

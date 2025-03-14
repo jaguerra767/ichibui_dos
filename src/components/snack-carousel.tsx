@@ -54,7 +54,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                 className="w-full" 
                 orientation="vertical"
             >
-                <CarouselContent className="h-[900px] space-y-1 py-1">
+                <CarouselContent className="h-[1300px] space-y-1 py-1">
                     {snacks.map((snack, index) => (
                         <CarouselItem 
                             key={index} 
@@ -64,7 +64,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                         >
                             <Card className="overflow-hidden w-fit mx-auto">
                                 <CardContent className="flex items-center justify-center bg-slate-950">
-                                    <img src={snack.base64_img} alt="snack" className='h-96 w-full'></img>
+                                    <img src={snack.base64_img} alt="snack" className='h-[600px] w-full'></img>
                                 </CardContent>
                             </Card>
                         </CarouselItem>
