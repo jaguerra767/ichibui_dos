@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { DispenseType, Ingredient, User } from './types';
 import SnackCarousel from './components/snack-carousel';
 

@@ -61,13 +61,21 @@ function App() {
                 img_filename: d.img,
                 base64_img: images[index]
             }));
-
             setSnacks(mappedIngredients);
         } catch (err) {
             console.error("Failed to fetch ingredients:", err);
         } 
     };
+    const setFullScreen = async () => {
+      try {
+        await invoke('set_fullscreen');  // Call the Rust function
+      } catch (error) {
+        console.error("Failed to set fullscreen:", error);
+      }
+    };
+
     fetchIngredients();
+    setFullScreen();
 },[]);
 
 

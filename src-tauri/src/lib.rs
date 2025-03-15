@@ -9,8 +9,10 @@ use state::get_pe_blocked;
 use state::update_node_level;
 use state::update_pe_state;
 use state::{get_dispense_count, update_current_ingredient, update_run_state, update_ui_request};
+// use tauri::window;
+use tauri::AppHandle;
 use std::env;
-use std::env::set_var;
+// use std::env::set_var;
 use std::sync::{LazyLock, Mutex};
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
@@ -121,7 +123,7 @@ pub fn run() {
         .manage(Mutex::new(state::AppData::new()))
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
-            let main_window = app.get_webview_window("main").unwrap();
+            //let main_window = app.get_webview_window("main").unwrap();
             //main_window.minimize().unwrap();
             
             // std::thread::sleep(std::time::Duration::from_millis(250));
@@ -213,7 +215,8 @@ pub fn run() {
             update_current_ingredient,
             update_run_state,
             update_ui_request,
-            log_in
+            log_in,
+            set_fullscreen
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -238,3 +241,13 @@ fn test_read_caldo_logo() {
     assert_ne!(logo.is_err(), true);
     println!("{:?}", logo.unwrap())
 }
+
+#[tauri::command]
+fn set_fullscreen(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {  // Get the main window
+        window.set_fullscreen(true).map_err(|e| e.to_string())?;
+    } else {
+        return Err("Failed to get main window".to_string());
+    }
+    Ok(())
+}   
