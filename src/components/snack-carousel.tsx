@@ -49,7 +49,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                 opts={{
                     align: "start", 
                     loop: false, 
-                    slidesToScroll: 1
+                    slidesToScroll: 1,
                 }} 
                 className="w-full" 
                 orientation="vertical"
@@ -64,7 +64,7 @@ const SnackCarousel: React.FC<SnackCarouselProps> = ({dispenseType, snacks, setS
                         >
                             <Card className="overflow-hidden w-fit mx-auto">
                                 <CardContent className="flex items-center justify-center bg-slate-950">
-                                    <img src={snack.base64_img} alt="snack" className='h-[600px] w-full'></img>
+                                    <img src={snack.base64_img} alt="snack" className='h-[600px] w-full' loading='lazy'></img>
                                 </CardContent>
                             </Card>
                         </CarouselItem>

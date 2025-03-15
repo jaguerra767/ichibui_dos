@@ -101,11 +101,11 @@ fn log_in(pin: String) -> User {
 pub fn run() {
 
 
-    #[cfg(target_os = "linux")]
-    {
-        set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-        set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
-    }
+    // #[cfg(target_os = "linux")]
+    // {
+    //     set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    //     set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    // }
 
 
 
@@ -122,7 +122,15 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             let main_window = app.get_webview_window("main").unwrap();
-            main_window.set_cursor_visible(false).unwrap();
+            //main_window.minimize().unwrap();
+            
+            // std::thread::sleep(std::time::Duration::from_millis(250));
+            // //main_window.set_fullscreen(true).unwrap();
+            // std::thread::sleep(std::time::Duration::from_millis(2500));
+            // //main_window.minimize().unwrap();
+            // std::thread::sleep(std::time::Duration::from_millis(2500));
+            // main_window.set_fullscreen(true).unwrap();
+            // std::thread::sleep(std::time::Duration::from_millis(250));
 
             let app_handle = app.app_handle();
 
@@ -132,6 +140,8 @@ pub fn run() {
             //Lets spawn the scale
 
             let (scale_tx, scale_rx) = channel(10);
+
+        
 
            
             tauri::async_runtime::spawn({

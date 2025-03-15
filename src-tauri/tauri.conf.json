@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "fullscreen": true,
+        "fullscreen": false,
+        "resizable": true,
         "decorations": false,
-        "alwaysOnTop":true
+        "alwaysOnTop":true,
+        "width":800,
+        "height": 600
+
       }
     ],
     "security": {
