@@ -5,6 +5,7 @@ use ichibu::ichibu_cycle;
 use ingredients::{read_ingredient_config, UiData};
 use io::initialize_controller;
 use serde::{Deserialize, Serialize};
+use state::get_pe_blocked;
 use state::update_node_level;
 use state::update_pe_state;
 use state::{get_dispense_count, update_current_ingredient, update_run_state, update_ui_request};
@@ -198,6 +199,7 @@ pub fn run() {
             get_ingredient_data,
             get_image,
             get_dispense_count,
+            get_pe_blocked,
             update_current_ingredient,
             update_run_state,
             update_ui_request,
