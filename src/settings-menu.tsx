@@ -67,6 +67,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ currentUser, currentDispens
                   checked={currentDispenseType === DispenseType.LargeSmall}
                   onCheckedChange={handleToggle}
                   id="dispense-mode"
+                  className='h-10'
                 />
                 <Label className="text-xl font-bold">Sized Dispense</Label>
               </div>

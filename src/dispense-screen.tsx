@@ -45,7 +45,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     
     // Function to get the main button's class based on PE blocked state
     const getButtonClass = () => {
-        const baseClasses = "w-full h-[120px] text-6xl font-bold";
+        const baseClasses = "w-full h-[120px] text-6xl font-bold focus:outline-none focus:ring-0 border-0";
         const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-800';
         const notReadyClass = 'bg-gray-500 hover:bg-gray-500 active:bg-gray-500';
         // Gray if PE NOT MADE
@@ -106,13 +106,13 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                     smallLargeModeOn &&
                     <div className="flex space-x-2 w-full">
                         <Button  
-                            className={`w-1/2 h-[150px] text-6xl font-bold hover:bg-blue-600 ${ size===UiRequest.SmallDispense?"bg-blue-600" :"bg-gray-500"}`}
+                            className={`w-1/2 h-[150px] text-6xl font-bold hover:bg-blue-600 focus:outline-none focus:ring-0 border-0 ${ size===UiRequest.SmallDispense?"bg-blue-600" :"bg-gray-500"}`}
                             onClick={() => setSize(UiRequest.SmallDispense)}
                         >
                             SM
                         </Button>
                         <Button  
-                            className={`w-1/2 h-[150px] text-6xl font-bold hover:bg-blue-600 ${ size===UiRequest.RegularDispense?"bg-blue-600" :"bg-gray-500"}`}
+                            className={`w-1/2 h-[150px] text-6xl font-bold hover:bg-blue-600 focus:outline-none focus:ring-0 border-0 ${ size===UiRequest.RegularDispense?"bg-blue-600" :"bg-gray-500"}`}
                             onClick={() => setSize(UiRequest.RegularDispense) }
                         >
                             LG

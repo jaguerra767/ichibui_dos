@@ -92,7 +92,7 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button className=" m-auto text-4xl bg-green-700 w-[200px] h-[100px]" onClick={logIn} disabled={isLoading || otp.length === 0}> {isLoading ? "Logging in..." : "Log In"}</Button>
-              <Button className="m-auto text-4xl bg-destructive w-[200px] h-[100px]" onClick={() => navigate('/dispense-screen')} disabled={isLoading}>Cancel</Button>
+              <Button className="m-auto text-4xl bg-destructive w-[200px] h-[100px]" onClick={() => navigate(-1)} disabled={isLoading}>Cancel</Button>
             </CardFooter>
         </Card>
     );
