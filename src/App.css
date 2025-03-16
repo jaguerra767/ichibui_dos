@@ -68,7 +68,7 @@ button {
 }
 
 button {
-  cursor: pointer;
+  cursor: none;
 }
 
 button:hover {

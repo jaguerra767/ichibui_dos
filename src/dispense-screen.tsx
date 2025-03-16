@@ -45,7 +45,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     
     // Function to get the main button's class based on PE blocked state
     const getButtonClass = () => {
-        const baseClasses = "w-full h-[120px] text-4xl";
+        const baseClasses = "w-full h-[120px] text-6xl font-bold";
         const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-800';
         const notReadyClass = 'bg-gray-500 hover:bg-gray-500 active:bg-gray-500';
         // Gray if PE NOT MADE
@@ -105,13 +105,13 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                     smallLargeModeOn &&
                     <div className="flex space-x-2 w-full">
                         <Button  
-                            className="w-1/2 h-[100px] text-2xl bg-blue-600 hover:bg-blue-950"
+                            className="w-1/2 h-[100px] text-6xl font-bold bg-gray-500 active:bg-blue-600"
                             onClick={() => setSize(UiRequest.SmallDispense)}
                         >
                             SM
                         </Button>
                         <Button  
-                            className="w-1/2 h-[100px]  text-2xl bg-blue-600 hover:bg-blue-950"
+                            className="w-1/2 h-[100px]  text-6xl font-bold bg-gray-500 active:bg-blue-600"
                             onClick={() => setSize(UiRequest.RegularDispense) }
                         >
                             LG
