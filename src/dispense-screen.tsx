@@ -118,6 +118,9 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                         </Button>
                     </div>
                 }
+                    <div>
+                        
+                    </div>
                     <Button  
                         disabled={disableButton()}
                         className={getButtonClass()}
