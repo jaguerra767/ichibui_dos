@@ -83,11 +83,12 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
         }
     }
 
+ 
         useEffect(() => {
             // Fetch immediately on component mount
             fetchIchibuState();
             
-            // Set up interval for periodic updates (every 2 seconds)
+            // Set up interval for periodic updates (every 250 ms)
             const intervalId = setInterval(() => {
               fetchIchibuState();
             }, 250); // Adjust timing as needed
@@ -119,7 +120,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                     </div>
                 }
                     <div>
-                        
+
                     </div>
                     <Button  
                         disabled={disableButton()}

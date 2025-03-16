@@ -1,10 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState} from 'react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import gear from '@/assets/gear-white.svg';
