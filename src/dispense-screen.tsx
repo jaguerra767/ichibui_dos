@@ -100,18 +100,18 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     return (
         <div className="px-10 py-56">
              <SvgViewer base64svg={snack?.base64_img ?? ""}/>
-             <div className="w-full space-y-2">
+             <div className="w-full space-y-5">
                 {
                     smallLargeModeOn &&
                     <div className="flex space-x-2 w-full">
                         <Button  
-                            className="w-1/2 h-[100px] text-6xl font-bold bg-gray-500 active:bg-blue-600"
+                            className={`w-1/2 h-[150px] text-6xl font-bold hover:bg-blue-600 ${ size===UiRequest.SmallDispense?"bg-blue-600" :"bg-gray-500"}`}
                             onClick={() => setSize(UiRequest.SmallDispense)}
                         >
                             SM
                         </Button>
                         <Button  
-                            className="w-1/2 h-[100px]  text-6xl font-bold bg-gray-500 active:bg-blue-600"
+                            className={`w-1/2 h-[150px] text-6xl font-bold hover:bg-blue-600 ${ size===UiRequest.RegularDispense?"bg-blue-600" :"bg-gray-500"}`}
                             onClick={() => setSize(UiRequest.RegularDispense) }
                         >
                             LG
