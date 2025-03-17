@@ -123,16 +123,7 @@ pub fn run() {
         .manage(Mutex::new(state::AppData::new()))
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
-            //let main_window = app.get_webview_window("main").unwrap();
-            //main_window.minimize().unwrap();
-            
-            // std::thread::sleep(std::time::Duration::from_millis(250));
-            // //main_window.set_fullscreen(true).unwrap();
-            // std::thread::sleep(std::time::Duration::from_millis(2500));
-            // //main_window.minimize().unwrap();
-            // std::thread::sleep(std::time::Duration::from_millis(2500));
-            // main_window.set_fullscreen(true).unwrap();
-            // std::thread::sleep(std::time::Duration::from_millis(250));
+    
 
             let app_handle = app.app_handle();
 
