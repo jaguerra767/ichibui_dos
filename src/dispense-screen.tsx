@@ -136,13 +136,15 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                     >
                         {getButtonText()}
                     </Button>
-               
-                    <div className="flex items-center justify-center py-5 ">
-                        {dispenserBusy && <span className="text-white text-6xl">Dispensing...</span>}
+                    <div>
+                        <div className="flex items-center justify-center py-5 ">
+                            {dispenserBusy && <span className="text-white text-2xl">Dispensing...</span>}
+                        </div>
+                        <div className="flex items-center justify-center py-5">
+                            {dispenserBusy && <SoundWave/>}
+                        </div>
                     </div>
-                    <div className="flex items-center justify-center py-5">
-                        {dispenserBusy && <SoundWave/>}
-                    </div>
+                    
 
                     
                     <div className="flex items-center justify-center space-x-2 py-96">

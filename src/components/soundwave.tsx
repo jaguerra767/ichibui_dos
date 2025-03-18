@@ -12,7 +12,7 @@ interface SoundWaveProps {
 }
 
 const SoundWave: React.FC<SoundWaveProps> = ({
-  size = 150,
+  size = 100,
   color = 'white',
   speed = 1,
   strokeWidth = 3.5,
