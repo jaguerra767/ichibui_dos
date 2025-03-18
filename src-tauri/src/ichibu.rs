@@ -101,9 +101,13 @@ async fn handle_running_state(
 
     let parameters = Parameters::from(&snack.dispense_parameters);
     
-
+    {
+        state.lock().unwrap().set_dispenser_busy(true);   
+    }
     dispenser.launch_dispense(setpoint, parameters).await;
-
+    {
+        state.lock().unwrap().set_dispenser_busy(false);   
+    }
     handle_user_selection(state.clone(), dispenser, &snack).await;
 
     let ichibu_state = {
@@ -156,14 +160,21 @@ async fn handle_user_selection(
                         setpoint: sp as f64,
                         timeout: Duration::from_micros(1000),
                     });
+                    {
+                        state.lock().unwrap().set_dispenser_busy(true);   
+                    }
                     dispenser
                         .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
                         .await;
+                    {
+                        state.lock().unwrap().set_dispenser_busy(false);   
+                    }
                 }
                 break;
             }
         }
     }
+
     wait_for_pe(state.clone()).await;
 }
 
@@ -172,10 +183,10 @@ async fn handle_emptying_state(
     hatch: &mut Hatch,
     pe_state: PhotoEyeState,
 ) {
-    if hatch.open().await.is_err() {
-        log::error!("Hatch Failed to Open")
-    }
     if matches!(pe_state, PhotoEyeState::Blocked) {
+        if hatch.open().await.is_err() {
+            log::error!("Hatch Failed to Open")
+        }
         dispenser.empty().await;
     } else {
         dispenser.disable().await;

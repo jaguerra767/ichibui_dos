@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use state::get_pe_blocked;
 use state::update_node_level;
 use state::update_pe_state;
-use state::{get_dispense_count, update_current_ingredient, update_run_state, update_ui_request};
+use state::{get_dispense_count, update_current_ingredient, update_run_state, update_ui_request, dispenser_is_busy};
 // use tauri::window;
 use tauri::AppHandle;
 use std::env;
@@ -207,7 +207,8 @@ pub fn run() {
             update_run_state,
             update_ui_request,
             log_in,
-            set_fullscreen
+            set_fullscreen,
+            dispenser_is_busy
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -66,7 +66,7 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
             <CardContent>
               <div style={{ textAlign: "center" }}>
                 <input className="text-4xl text-center" value={otp} readOnly placeholder="Enter numbers" />
-                <div style={{ width: "500px", height: "400px", margin: "auto" }}>
+                <div style={{ width: "500px", height: "400px", margin: "auto"}}>
                   <Keyboard
                     onChange={setOtp}
                       layout={{
@@ -77,15 +77,16 @@ const LogIn: React.FC<LogInProps> = ({onUpdate}: LogInProps) => {
                       }}
                       buttonTheme={[
                         {
-                          class: "text-3xl font-bold", // Tailwind classes for all keys
+                          class: "text-3xl font-bold cursor-none", // Tailwind classes for all keys
                           buttons: "1 2 3 4 5 6 7 8 9 0",
                         },
                         {
-                          class: "text-3xl", // Tailwind classes for all keys
+                          class: "text-3xl cursor-none", // Tailwind classes for all keys
                           buttons: "{bksp}",
                         },
                       ]}
-                      theme="hg-theme-default hg-layout-numeric"
+                      theme="hg-theme-default hg-layout-numeric cursor-none"
+                    
                   />
                 </div>
               </div>

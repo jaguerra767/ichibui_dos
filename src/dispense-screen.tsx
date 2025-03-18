@@ -4,6 +4,7 @@ import recycle from "./assets/recycle.svg"
 import { invoke } from "@tauri-apps/api/core";
 import SvgViewer from "./components/svg-viewer";
 import { Button } from "./components/ui/button";
+import SoundWave from "./components/soundwave";
 
 
 interface DispenseScreenProps{
@@ -18,14 +19,17 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
 
     const [bowlCount, setBowlCount] = useState<Number>(0);
     const [peBlocked, setPeBlocked] = useState<Boolean>(false);
+    const [dispenserBusy, setDispenserBusy] = useState<Boolean>(false);
     const [size, setSize] = useState<UiRequest>(UiRequest.None);
 
     const fetchIchibuState = async () => {
         try{
             const bowls = await invoke<Number>("get_dispense_count");
             setBowlCount(bowls);
-            const peState = await invoke<Boolean>("get_pe_blocked")
+            const peState = await invoke<Boolean>("get_pe_blocked");
             setPeBlocked(peState);
+            const dispenserBusy = await invoke<Boolean>("dispenser_is_busy");
+            setDispenserBusy(dispenserBusy);
         } catch (error) {
             console.error("Failed to update bowl count: ", error);
         }
@@ -34,7 +38,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     // Function to get the main button's text based on PE blocked state
     const getButtonText = () => {
         if(!peBlocked) {
-            return 'Plase place bowl in bay below';
+            return 'Please place bowl in bay below';
         }
         if (classicModeOn){
             return 'Lets Go!';
@@ -46,7 +50,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     // Function to get the main button's class based on PE blocked state
     const getButtonClass = () => {
         const baseClasses = "w-full h-[120px] text-6xl font-bold focus:outline-none focus:ring-0 border-0";
-        const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-800';
+        const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-700';
         const notReadyClass = 'bg-gray-500 hover:bg-gray-500 active:bg-gray-500';
         // Gray if PE NOT MADE
         if (!peBlocked) {
@@ -93,6 +97,9 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
               fetchIchibuState();
             }, 250); // Adjust timing as needed
             
+            if (!peBlocked) {
+                setSize(UiRequest.None);
+            }
             // Clean up interval on component unmount
             return () => clearInterval(intervalId);
           }, []);
@@ -104,7 +111,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
              <div className="w-full space-y-5">
                 {
                     smallLargeModeOn &&
-                    <div className="flex space-x-2 w-full">
+                    <div className="flex space-x-4 w-full">
                         <Button  
                             className={`w-1/2 h-[150px] text-6xl font-bold hover:bg-blue-600 focus:outline-none focus:ring-0 border-0 ${ size===UiRequest.SmallDispense?"bg-blue-600" :"bg-gray-500"}`}
                             onClick={() => setSize(UiRequest.SmallDispense)}
@@ -129,6 +136,15 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                     >
                         {getButtonText()}
                     </Button>
+               
+                    <div className="flex items-center justify-center py-5 ">
+                        {dispenserBusy && <span className="text-white text-6xl">Dispensing...</span>}
+                    </div>
+                    <div className="flex items-center justify-center py-5">
+                        {dispenserBusy && <SoundWave/>}
+                    </div>
+
+                    
                     <div className="flex items-center justify-center space-x-2 py-96">
                         <img 
                             src={recycle }

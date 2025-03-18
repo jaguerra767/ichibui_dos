@@ -35,6 +35,7 @@ pub struct AppData {
     ui_request: UiRequest,
     node_level: NodeLevel,
     pe_state: io::PhotoEyeState,
+    dispenser_busy: bool,
     database: Data,
     bowl_count: i64,
     current_snack: Option<Ingredient>,
@@ -49,6 +50,7 @@ impl AppData {
             ui_request: UiRequest::None,
             node_level: NodeLevel::Empty,
             pe_state: PhotoEyeState::Unblocked,
+            dispenser_busy: false,
             database,
             bowl_count,
             current_snack: None,
@@ -80,6 +82,10 @@ impl AppData {
     pub fn get_ui_request(&self) -> UiRequest {
         self.ui_request.clone()
     }
+
+    pub fn set_dispenser_busy(&mut self, is_busy: bool) {
+        self.dispenser_busy = is_busy;
+    }
     //These are private so that they can only be called from the UI via the tauri commands below
     fn update_current_snack(&mut self, snack: Ingredient) {
         self.current_snack = Some(snack);
@@ -91,6 +97,10 @@ impl AppData {
 
     fn update_ui_request(&mut self, ui_request: UiRequest) {
         self.ui_request = ui_request;
+    }
+
+    fn dispenser_is_busy(&self) -> bool {
+        self.dispenser_busy
     }
 }
 
@@ -150,4 +160,9 @@ pub fn get_pe_blocked(state: tauri::State<'_, Mutex<AppData>>) -> bool {
         PhotoEyeState::Blocked => true,
         PhotoEyeState::Unblocked => false,
     }
+}
+
+#[tauri::command]
+pub fn dispenser_is_busy(state: tauri::State<'_, Mutex<AppData>>) -> bool {
+    state.lock().unwrap().dispenser_is_busy()
 }

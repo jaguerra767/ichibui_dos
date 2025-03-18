@@ -6,7 +6,7 @@
 
   color: #0f0f0f;
   background-color: #f6f6f6;
-
+  cursor: none;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -72,15 +72,18 @@ button {
 }
 
 button:hover {
+  cursor: none;
   border-color: #396cd8;
 }
 button:active {
+  cursor: none;
   border-color: #396cd8;
   background-color: #e8e8e8;
 }
 
 input,
 button {
+  cursor: none;
   outline: none;
 }
 
