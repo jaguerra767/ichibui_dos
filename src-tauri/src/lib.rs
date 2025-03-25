@@ -5,6 +5,7 @@ use ichibu::ichibu_cycle;
 use ingredients::{read_ingredient_config, UiData};
 use io::initialize_controller;
 use serde::{Deserialize, Serialize};
+use state::dispenser_timed_out;
 use state::get_pe_blocked;
 use state::update_node_level;
 use state::update_pe_state;
@@ -208,7 +209,8 @@ pub fn run() {
             update_ui_request,
             log_in,
             set_fullscreen,
-            dispenser_is_busy
+            dispenser_is_busy,
+            dispenser_timed_out
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

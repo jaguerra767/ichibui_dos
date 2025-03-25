@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use control_components::{
     components::{clear_core_motor::ClearCoreMotor, scale::ScaleCmd},
-    subsystems::dispenser::{Dispenser, Parameters, Setpoint},
+    subsystems::dispenser::{DispenseEndCondition, Dispenser, Parameters, Setpoint},
 };
 
 use log::error;
@@ -12,14 +12,18 @@ struct Dispense {
     receiver: mpsc::Receiver<DispenseMsg>,
     scale_tx: mpsc::Sender<ScaleCmd>,
     motor: ClearCoreMotor,
-    timeout: Duration,
+    pub filling_threshold: f64,
+    pub timeout: Duration,
 }
 
 enum DispenseMsg {
     LaunchDispense {
         setpoint: Setpoint,
         parameters: Parameters,
-        respond_to: oneshot::Sender<()>,
+        respond_to: oneshot::Sender<DispenseEndCondition>,
+    },
+    GetWeight {
+        respond_to: oneshot::Sender<f64>
     },
     Enable,
     Disable,
@@ -31,12 +35,14 @@ impl Dispense {
         receiver: mpsc::Receiver<DispenseMsg>,
         motor: ClearCoreMotor,
         scale_tx: mpsc::Sender<ScaleCmd>,
+        filling_threshold: f64
     ) -> Self {
         let default_timeout = Duration::from_secs(10);
         Self {
             receiver,
             scale_tx,
             motor,
+            filling_threshold,
             timeout: default_timeout,
         }
     }
@@ -44,37 +50,44 @@ impl Dispense {
     async fn handle_msg(&self, msg: DispenseMsg) {
         match msg {
             DispenseMsg::LaunchDispense {
-                setpoint,
-                parameters,
-                respond_to,
-            } => {
-                let _ = self.motor.enable().await;
-                Dispenser::new(
-                    self.motor.clone(),
-                    setpoint,
-                    parameters,
-                    self.scale_tx.clone(),
-                )
-                .dispense(self.timeout)
-                .await;
-                let _ = respond_to.send(());
-            }
+                        setpoint,
+                        parameters,
+                        respond_to,
+                    } => {
+                        let _ = self.motor.enable().await;
+                        let dispense_result = Dispenser::new(
+                            self.motor.clone(),
+                            setpoint,
+                            parameters,
+                            self.scale_tx.clone(),
+                        )
+                        .dispense(self.timeout)
+                        .await;
+                        let _ = respond_to.send(dispense_result);
+                    }
             DispenseMsg::Disable => {
-                self.motor.abrupt_stop().await;
-                self.motor.disable().await;
-            }
+                        self.motor.abrupt_stop().await;
+                        self.motor.disable().await;
+                    }
             DispenseMsg::Empty => {
-                let _ = self.motor.enable().await;
-                tokio::time::sleep(Duration::from_millis(1000)).await;
-                self.motor.clear_alerts().await;
-                self.motor.set_velocity(1.).await;
-                let _ = self.motor.relative_move(100.).await;
-            }
+                        let _ = self.motor.enable().await;
+                        tokio::time::sleep(Duration::from_millis(1000)).await;
+                        self.motor.clear_alerts().await;
+                        self.motor.set_velocity(1.).await;
+                        let _ = self.motor.relative_move(100.).await;
+                    }
             DispenseMsg::Enable => {
-                if let Err(e) = self.motor.enable().await {
-                    error!("Motor failed to enable{:?}", e)
-                }
-            }
+                        if let Err(e) = self.motor.enable().await {
+                            error!("Motor failed to enable{:?}", e)
+                        }
+                    }
+            DispenseMsg::GetWeight { respond_to } => {
+                let (send, recv) = oneshot::channel();
+                let msg = ScaleCmd(send);
+                let _ = self.scale_tx.send(msg).await;
+                let weight = recv.await.unwrap();
+                respond_to.send(weight).unwrap();
+            },
         }
     }
 }
@@ -87,18 +100,19 @@ async fn run_dispense_actor(mut dispense: Dispense) {
 
 #[derive(Clone)]
 pub struct DispenseHandle {
+    pub filling_threshold: f64,
     sender: mpsc::Sender<DispenseMsg>,
 }
 
 impl DispenseHandle {
-    pub fn new(motor: ClearCoreMotor, scale_tx: mpsc::Sender<ScaleCmd>) -> Self {
+    pub fn new(motor: ClearCoreMotor, scale_tx: mpsc::Sender<ScaleCmd>, filling_threshold: f64) -> Self {
         let (sender, receiver) = mpsc::channel(10);
-        let dispenser = Dispense::new(receiver, motor, scale_tx);
+        let dispenser = Dispense::new(receiver, motor, scale_tx, filling_threshold);
         tauri::async_runtime::spawn(run_dispense_actor(dispenser));
-        Self { sender }
+        Self { filling_threshold, sender }
     }
 
-    pub async fn launch_dispense(&self, setpoint: Setpoint, parameters: Parameters) {
+    pub async fn launch_dispense(&self, setpoint: Setpoint, parameters: Parameters) -> DispenseEndCondition{
         let (send, recv) = oneshot::channel();
         let msg = DispenseMsg::LaunchDispense {
             setpoint,
@@ -122,5 +136,11 @@ impl DispenseHandle {
     pub async fn enable(&self) {
         let msg = DispenseMsg::Enable {};
         let _ = self.sender.send(msg).await;
+    }
+    pub async fn get_weight(&self) -> f64 {
+        let (send, recv) = oneshot::channel();
+        let msg = DispenseMsg::GetWeight { respond_to: send };
+        let _ = self.sender.send(msg).await;
+        recv.await.unwrap()
     }
 }

@@ -21,6 +21,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     const [peBlocked, setPeBlocked] = useState<Boolean>(false);
     const [dispenserBusy, setDispenserBusy] = useState<Boolean>(false);
     const [size, setSize] = useState<UiRequest>(UiRequest.None);
+    const [hopperEmpty, setHopperEmpty] = useState<Boolean>(false)
 
     const fetchIchibuState = async () => {
         try{
@@ -30,6 +31,8 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
             setPeBlocked(peState);
             const dispenserBusy = await invoke<Boolean>("dispenser_is_busy");
             setDispenserBusy(dispenserBusy);
+            const hopperEmpty = await invoke<Boolean>("get_dispenser_timed_out");
+            setHopperEmpty(hopperEmpty);
         } catch (error) {
             console.error("Failed to update bowl count: ", error);
         }
@@ -37,6 +40,9 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
 
     // Function to get the main button's text based on PE blocked state
     const getButtonText = () => {
+        if(hopperEmpty) {
+            return "Hopper empty"
+        }
         if(!peBlocked) {
             return 'Please place bowl in bay below';
         }
@@ -52,6 +58,10 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
         const baseClasses = "w-full h-[120px] text-6xl font-bold focus:outline-none focus:ring-0 border-0";
         const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-700';
         const notReadyClass = 'bg-gray-500 hover:bg-gray-500 active:bg-gray-500';
+        const hopperEmptyClass = "bg-destructive";
+        if(hopperEmpty){
+            return `${baseClasses} ${hopperEmptyClass}`;
+        }
         // Gray if PE NOT MADE
         if (!peBlocked) {
             return `${baseClasses} ${notReadyClass}`;

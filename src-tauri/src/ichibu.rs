@@ -1,5 +1,5 @@
 use control_components::components::scale::ScaleCmd;
-use control_components::subsystems::dispenser::{Parameters, Setpoint, WeightedDispense};
+use control_components::subsystems::dispenser::{DispenseEndCondition, Parameters, Setpoint, WeightedDispense};
 use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::mpsc::Sender;
@@ -21,7 +21,8 @@ pub async fn ichibu_cycle(
 
     let cc_handle = initialize_controller(&config);
     let motor_id = config.motor.id;
-    let dispenser = DispenseHandle::new(cc_handle.get_motor(motor_id).clone(), scale_tx);
+    let filling_threshold = config.setpoint.filling_threshold;
+    let dispenser = DispenseHandle::new(cc_handle.get_motor(motor_id).clone(), scale_tx, filling_threshold);
 
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
@@ -104,10 +105,27 @@ async fn handle_running_state(
     {
         state.lock().unwrap().set_dispenser_busy(true);   
     }
-    dispenser.launch_dispense(setpoint, parameters).await;
+    let res = dispenser.launch_dispense(setpoint, parameters).await;
     {
-        state.lock().unwrap().set_dispenser_busy(false);   
+        let mut state_guard = state.lock().unwrap();
+        state_guard.set_dispenser_busy(false);   
+        if matches!(res, DispenseEndCondition::Timeout(_)) {
+            state_guard.set_dispenser_timed_out(true);
+        }
+        drop(state_guard);
     }
+    loop {
+        let weight = dispenser.get_weight().await;
+        if weight > dispenser.filling_threshold {
+            let mut state_guard = state.lock().unwrap();
+            state_guard.set_dispenser_timed_out(false);   
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+    }
+
+    
+
     handle_user_selection(state.clone(), dispenser, &snack).await;
 
     let ichibu_state = {
