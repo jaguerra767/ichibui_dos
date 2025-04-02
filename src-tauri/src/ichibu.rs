@@ -13,10 +13,7 @@ use crate::io::{initialize_controller, initialize_hatch, PhotoEyeState};
 use crate::state::{AppData, IchibuState};
 use crate::UiRequest;
 
-pub async fn ichibu_cycle(
-    state: tauri::State<'_, Mutex<AppData>>,
-    scale_tx: Sender<ScaleCmd>,
-) {
+pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale_tx: Sender<ScaleCmd>) {
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
@@ -58,16 +55,14 @@ async fn run_cycle_loop(
                 if hatch.open().await.is_err() {
                     log::error!("Hatch Failed To Open")
                 }
-                dispenser.disable().await
+                dispenser.disable().await;
                 tokio::time::sleep(Duration::from_millis(1000)).await
-            },
+            }
             IchibuState::Emptying => handle_emptying_state(dispenser, hatch, pe_state).await,
-            IchibuState::Ready => {
-                tokio::time::sleep(Duration::from_millis(1000)).await
-            },
+            IchibuState::Ready => tokio::time::sleep(Duration::from_millis(1000)).await,
             IchibuState::RunningClassic | IchibuState::RunningSized => {
                 handle_running_state(state, dispenser, hatch).await
-            },
+            }
         }
     }
 }
@@ -83,7 +78,7 @@ async fn handle_running_state(
     if hatch.close().await.is_err() {
         log::error!("Hatch Failed to Close");
     }
-   
+
     let setpoint = {
         let ichibu_state = state.lock().unwrap().get_state();
         if matches!(ichibu_state, IchibuState::RunningClassic) {
@@ -97,23 +92,23 @@ async fn handle_running_state(
         setpoint: setpoint as f64,
         timeout: Duration::from_millis(30000),
     });
-    
+
     let parameters = Parameters::from(&snack.dispense_parameters);
-    
+
     {
-        state.lock().unwrap().set_dispenser_busy(true);   
+        state.lock().unwrap().set_dispenser_busy(true);
     }
     dispenser.launch_dispense(setpoint, parameters).await;
     {
-        state.lock().unwrap().set_dispenser_busy(false);   
+        state.lock().unwrap().set_dispenser_busy(false);
     }
-    
+
     handle_user_selection(state.clone(), dispenser, &snack).await;
 
     let ichibu_state = {
         let state = state.lock().unwrap();
         let ichibu_state = state.get_state();
-       ichibu_state
+        ichibu_state
     };
 
     if matches!(ichibu_state, IchibuState::Cleaning) {
@@ -122,7 +117,7 @@ async fn handle_running_state(
     if matches!(ichibu_state, IchibuState::Emptying) {
         return;
     }
-    
+
     if hatch.open().await.is_err() {
         log::error!("Hatch open timed out!");
     }
@@ -161,14 +156,14 @@ async fn handle_user_selection(
                         timeout: Duration::from_micros(1000),
                     });
                     {
-                        state.lock().unwrap().set_dispenser_busy(true);   
+                        state.lock().unwrap().set_dispenser_busy(true);
                     }
-                   
+
                     dispenser
                         .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
                         .await;
                     {
-                        state.lock().unwrap().set_dispenser_busy(false);   
+                        state.lock().unwrap().set_dispenser_busy(false);
                     }
                 }
                 break;
