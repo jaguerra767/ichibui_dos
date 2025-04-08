@@ -103,15 +103,6 @@ fn log_in(pin: String) -> User {
 pub fn run() {
 
 
-    // #[cfg(target_os = "linux")]
-    // {
-    //     set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-    //     set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
-    // }
-
-
-
-
     let config = Config::load();
     let controller = initialize_controller(&config);
 
