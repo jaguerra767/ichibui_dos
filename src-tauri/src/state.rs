@@ -140,13 +140,11 @@ pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack:
 
 #[tauri::command]
 pub fn update_run_state(state: tauri::State<'_, Mutex<AppData>>, new_state: IchibuState) {
-    println!("Update Run State called, new state: {:?}", new_state);
     state.lock().unwrap().update_state(new_state);
 }
 
 #[tauri::command]
 pub fn update_ui_request(state: tauri::State<'_, Mutex<AppData>>, ui_request: UiRequest) {
-    println!("Update UI Request Called");
     state.lock().unwrap().update_ui_request(ui_request);
 }
 
