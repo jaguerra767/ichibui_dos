@@ -119,7 +119,6 @@ pub async fn update_node_level(
     let msg = ScaleCmd(send);
     let _ = scale_tx.send(msg).await;
     if let Ok(weight) = recv.await {
-        println!("Current read weight is: {:?}", weight);
         let node_level = if weight > empty_weight {
             NodeLevel::Filled
         } else {
