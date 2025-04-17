@@ -129,6 +129,7 @@ pub async fn update_node_level(
     let msg = ScaleCmd(send);
     let _ = scale_tx.send(msg).await;
     if let Ok(weight) = recv.await {
+        println!("weight: {}", weight);
         let node_level = if weight > empty_weight {
             state.lock().unwrap().set_dispenser_timed_out(false);
             println!("Dispenser timed out cleared");
