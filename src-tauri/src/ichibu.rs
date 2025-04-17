@@ -1,5 +1,5 @@
 use control_components::components::scale::ScaleCmd;
-use control_components::subsystems::dispenser::{Parameters, Setpoint, WeightedDispense};
+use control_components::subsystems::dispenser::{DispenseEndCondition, Parameters, Setpoint, WeightedDispense};
 use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::mpsc::Sender;
@@ -98,9 +98,13 @@ async fn handle_running_state(
     {
         state.lock().unwrap().set_dispenser_busy(true);
     }
-    dispenser.launch_dispense(setpoint, parameters).await;
+    let dispense_result = dispenser.launch_dispense(setpoint, parameters).await;
     {
-        state.lock().unwrap().set_dispenser_busy(false);
+        let mut guard = state.lock().unwrap();
+        guard.set_dispenser_busy(false);
+        if matches!(dispense_result, DispenseEndCondition::Timeout(_)) {
+            guard.set_dispenser_timed_out(true);
+        }
     }
 
     handle_user_selection(state.clone(), dispenser, &snack).await;

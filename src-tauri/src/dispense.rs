@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use control_components::{
     components::{clear_core_motor::ClearCoreMotor, scale::ScaleCmd},
-    subsystems::dispenser::{Dispenser, Parameters, Setpoint},
+    subsystems::dispenser::{DispenseEndCondition, Dispenser, Parameters, Setpoint},
 };
 
 use log::error;
@@ -19,7 +19,7 @@ enum DispenseMsg {
     LaunchDispense {
         setpoint: Setpoint,
         parameters: Parameters,
-        respond_to: oneshot::Sender<()>,
+        respond_to: oneshot::Sender<DispenseEndCondition>,
     },
     Enable,
     Disable,
@@ -49,7 +49,7 @@ impl Dispense {
                 respond_to,
             } => {
                 let _ = self.motor.enable().await;
-                Dispenser::new(
+                let dispense_result = Dispenser::new(
                     self.motor.clone(),
                     setpoint,
                     parameters,
@@ -57,7 +57,7 @@ impl Dispense {
                 )
                 .dispense(self.timeout)
                 .await;
-                let _ = respond_to.send(());
+                let _ = respond_to.send(dispense_result);
             }
             DispenseMsg::Disable => {
                 self.motor.abrupt_stop().await;
@@ -98,7 +98,7 @@ impl DispenseHandle {
         Self { sender }
     }
 
-    pub async fn launch_dispense(&self, setpoint: Setpoint, parameters: Parameters) {
+    pub async fn launch_dispense(&self, setpoint: Setpoint, parameters: Parameters) -> DispenseEndCondition {
         let (send, recv) = oneshot::channel();
         let msg = DispenseMsg::LaunchDispense {
             setpoint,

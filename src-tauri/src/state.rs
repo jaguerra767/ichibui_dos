@@ -1,3 +1,4 @@
+use core::time;
 use std::sync::Mutex;
 
 use tokio::sync::{mpsc::Sender, oneshot};
@@ -36,6 +37,7 @@ pub struct AppData {
     node_level: NodeLevel,
     pe_state: io::PhotoEyeState,
     dispenser_busy: bool,
+    dispenser_timed_out: bool,
     database: Data,
     bowl_count: i64,
     current_snack: Option<Ingredient>,
@@ -51,6 +53,7 @@ impl AppData {
             node_level: NodeLevel::Empty,
             pe_state: PhotoEyeState::Unblocked,
             dispenser_busy: false,
+            dispenser_timed_out: false,
             database,
             bowl_count,
             current_snack: None,
@@ -86,6 +89,13 @@ impl AppData {
     pub fn set_dispenser_busy(&mut self, is_busy: bool) {
         self.dispenser_busy = is_busy;
     }
+
+    pub fn set_dispenser_timed_out(&mut self, timed_out: bool) {
+        if timed_out {
+            println!("Timed out!");
+        }
+        self.dispenser_timed_out = timed_out;
+    }
     //These are private so that they can only be called from the UI via the tauri commands below
     fn update_current_snack(&mut self, snack: Ingredient) {
         self.current_snack = Some(snack);
@@ -120,6 +130,8 @@ pub async fn update_node_level(
     let _ = scale_tx.send(msg).await;
     if let Ok(weight) = recv.await {
         let node_level = if weight > empty_weight {
+            state.lock().unwrap().set_dispenser_timed_out(false);
+            println!("Dispenser timed out cleared");
             NodeLevel::Filled
         } else {
             NodeLevel::Empty
@@ -163,4 +175,9 @@ pub fn get_pe_blocked(state: tauri::State<'_, Mutex<AppData>>) -> bool {
 #[tauri::command]
 pub fn dispenser_is_busy(state: tauri::State<'_, Mutex<AppData>>) -> bool {
     state.lock().unwrap().dispenser_is_busy()
+}
+
+#[tauri::command]
+pub fn dispenser_is_timed_out(state: tauri::State<'_, Mutex<AppData>>) -> bool {
+    state.lock().unwrap().dispenser_timed_out
 }
