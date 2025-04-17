@@ -20,6 +20,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     const [bowlCount, setBowlCount] = useState<Number>(0);
     const [peBlocked, setPeBlocked] = useState<Boolean>(false);
     const [dispenserBusy, setDispenserBusy] = useState<Boolean>(false);
+    const [dispenserTimedOut, setTimedOut] = useState<Boolean>(false)
     const [size, setSize] = useState<UiRequest>(UiRequest.None);
 
     const fetchIchibuState = async () => {
@@ -30,6 +31,8 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
             setPeBlocked(peState);
             const dispenserBusy = await invoke<Boolean>("dispenser_is_busy");
             setDispenserBusy(dispenserBusy);
+            const dispenserTimedOut = await invoke<Boolean>("dispenser_is_timed_out")
+            setTimedOut(dispenserTimedOut);
         } catch (error) {
             console.error("Failed to update bowl count: ", error);
         }
@@ -37,6 +40,9 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
 
     // Function to get the main button's text based on PE blocked state
     const getButtonText = () => {
+        if(dispenserTimedOut) {
+            return 'Hopper empty, please refill'
+        }
         if(!peBlocked) {
             return 'Please place bowl in bay below';
         }
@@ -52,6 +58,11 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
         const baseClasses = "w-full h-[150px] text-5xl font-bold focus:outline-none focus:ring-0 border-0";
         const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-700';
         const notReadyClass = 'bg-gray-500 hover:bg-gray-500 active:bg-gray-500';
+        const emptyClass = 'bg-destructive hover:bg-destructive active:bg-destructive';
+        // Red / Destructive if empty
+        if (dispenserTimedOut) {
+            return `${baseClasses} ${emptyClass}`;
+        }
         // Gray if PE NOT MADE
         if (!peBlocked) {
             return `${baseClasses} ${notReadyClass}`;

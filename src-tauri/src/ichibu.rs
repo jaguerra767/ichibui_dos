@@ -104,6 +104,7 @@ async fn handle_running_state(
         guard.set_dispenser_busy(false);
         if matches!(dispense_result, DispenseEndCondition::Timeout(_)) {
             guard.set_dispenser_timed_out(true);
+            return;
         }
     }
 
