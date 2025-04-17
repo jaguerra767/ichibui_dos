@@ -41,7 +41,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     // Function to get the main button's text based on PE blocked state
     const getButtonText = () => {
         if(dispenserTimedOut) {
-            return 'Hopper empty, please refill'
+            return 'Hopper empty, please refill';
         }
         if(!peBlocked) {
             return 'Please place bowl in bay below';
@@ -85,11 +85,14 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     }
 
     const disableButton = () => {
+        if(dispenserTimedOut) {
+            return true;
+        }
         if (!peBlocked){
-            return true
+            return true;
         }
         if(classicModeOn) {
-            return false
+            return false;
         }
         return size !== UiRequest.None ? false : true;
     }

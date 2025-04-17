@@ -89,6 +89,10 @@ impl AppData {
         self.dispenser_busy = is_busy;
     }
 
+    pub fn dispenser_timed_out(&self) -> bool {
+        self.dispenser_timed_out
+    }
+
     pub fn set_dispenser_timed_out(&mut self, timed_out: bool) {
         if timed_out {
             println!("Timed out!");

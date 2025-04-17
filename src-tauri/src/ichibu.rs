@@ -79,6 +79,12 @@ async fn handle_running_state(
         log::error!("Hatch Failed to Close");
     }
 
+    let timed_out = { state.lock().unwrap().dispenser_timed_out()};
+    if timed_out {
+        println!("Skipping dispense because still timed out!");
+        return;
+    }
+
     let setpoint = {
         let ichibu_state = state.lock().unwrap().get_state();
         if matches!(ichibu_state, IchibuState::RunningClassic) {
@@ -99,6 +105,7 @@ async fn handle_running_state(
         state.lock().unwrap().set_dispenser_busy(true);
     }
     let dispense_result = dispenser.launch_dispense(setpoint, parameters).await;
+    println!("{:?}", dispense_result);
     {
         let mut guard = state.lock().unwrap();
         guard.set_dispenser_busy(false);
