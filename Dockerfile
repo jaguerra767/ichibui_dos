@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM debian:bookworm AS builder
 
 # System dependencies
 RUN apt update && apt install -y curl build-essential \
@@ -44,3 +44,20 @@ RUN bash -c "source ${BASH_ENV} && npm install"
 
 # Build the app
 RUN bash -c "source ${BASH_ENV} && npm run tauri build"
+
+FROM scratch AS export
+
+# Copy the built binary from the builder stage
+# Adjust the path to where Tauri outputs your binary
+COPY --from=builder /app/src-tauri/target/release/bundle /output
+
+
+# Instructions:
+# 1) Build the image
+#   $docker build -t tauri-app-builder -f Dockerfile .
+# 2) Create a temporary container. Does not run.
+#   $docker create --name temp-container tauri-app-builder
+# 3) Extract the binary to Host ( ./output being the destination folder you want)
+#   $docker cp temp-container:/output ./output
+# 4) Clean up
+#   $docker rm temp-container
