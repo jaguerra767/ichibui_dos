@@ -6,6 +6,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::sleep;
 
 use crate::config::Config;
+use crate::data_logging::{Data, DataAction};
 use crate::dispense::DispenseHandle;
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
@@ -112,9 +113,13 @@ async fn handle_running_state(
     };
 
     if matches!(ichibu_state, IchibuState::Cleaning) {
+        let cleaning = DataAction::Cleaning;
+        state.lock().unwrap().log_action(&cleaning);
         return;
     }
     if matches!(ichibu_state, IchibuState::Emptying) {
+        let emptying = DataAction::Emptying;
+        state.lock().unwrap().log_action(&emptying);
         return;
     }
 
@@ -123,7 +128,6 @@ async fn handle_running_state(
     }
     sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
-    state.log_dispense();
     state.reset_ui_request();
 }
 
@@ -140,15 +144,24 @@ async fn handle_user_selection(
             (request, ichibu_state)
         };
         if matches!(ichibu_state, IchibuState::Cleaning) {
+            let cleaning = DataAction::Cleaning;
+            state.lock().unwrap().log_action(&cleaning);
             return;
         }
         if matches!(ichibu_state, IchibuState::Emptying) {
+            let emptying = DataAction::Emptying;
+            state.lock().unwrap().log_action(&emptying);
             return;
         }
         match request {
             UiRequest::None => sleep(Duration::from_millis(250)).await,
-            UiRequest::SmallDispense => break,
+            UiRequest::SmallDispense => {
+                let small_dispense = DataAction::DispensedSmall;
+                state.lock().unwrap().log_action(&small_dispense);
+                break
+            },
             UiRequest::RegularDispense => {
+                
                 if matches!(ichibu_state, IchibuState::RunningSized) {
                     let sp = snack.max_setpoint - snack.min_setpoint;
                     let setpoint = Setpoint::Weight(WeightedDispense {
@@ -158,7 +171,6 @@ async fn handle_user_selection(
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
-
                     dispenser
                         .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
                         .await;
@@ -166,11 +178,15 @@ async fn handle_user_selection(
                         state.lock().unwrap().set_dispenser_busy(false);
                     }
                 }
+                {
+                    let regular_dispense = DataAction::DispensedRegular;
+                    state.lock().unwrap().log_action(&regular_dispense);
+                    
+                }
                 break;
             }
         }
     }
-
     wait_for_pe(state.clone()).await;
 }
 

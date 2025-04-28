@@ -57,9 +57,9 @@ impl AppData {
         }
     }
     //These methods are public so that they may be called from the controls routine
-    pub fn log_dispense(&mut self) {
+    pub fn log_action(&mut self, action: &DataAction) {
         let snack_id = self.current_snack.as_ref().unwrap().id;
-        let _ = self.database.log(DataAction::Dispensed, Some(snack_id));
+        let _ = self.database.log(action, Some(snack_id));
         self.bowl_count = self.database.get_bowl_count().unwrap();
     }
 
@@ -139,7 +139,20 @@ pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack:
 
 #[tauri::command]
 pub fn update_run_state(state: tauri::State<'_, Mutex<AppData>>, new_state: IchibuState) {
-    state.lock().unwrap().update_state(new_state);
+    let mut state_guard = state.lock().unwrap();
+    if matches!(state_guard.get_state(), IchibuState::Ready){
+        match new_state {
+            IchibuState::Cleaning => {
+                let action = DataAction::Cleaning;
+                state_guard.log_action(&action)},
+            IchibuState::Emptying => {
+                let action = DataAction::Emptying;
+                state_guard.log_action(&action);
+            },
+            _ => ()
+        }
+    }
+    state_guard.update_state(new_state);
 }
 
 #[tauri::command]
