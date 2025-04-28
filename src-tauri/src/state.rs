@@ -117,6 +117,10 @@ impl AppData {
     fn dispenser_is_busy(&self) -> bool {
         self.dispenser_busy
     }
+
+    fn dispenser_is_timed_out(&self) -> bool {
+        self.dispenser_timed_out
+    }
 }
 
 //These are so that we can have a task updating these
@@ -137,7 +141,6 @@ pub async fn update_node_level(
         println!("weight: {}", weight);
         let node_level = if weight > empty_weight {
             state.lock().unwrap().set_dispenser_timed_out(false);
-            println!("Dispenser timed out cleared");
             NodeLevel::Filled
         } else {
             NodeLevel::Empty
@@ -175,6 +178,7 @@ pub fn update_run_state(state: tauri::State<'_, Mutex<AppData>>, new_state: Ichi
 
 #[tauri::command]
 pub fn update_ui_request(state: tauri::State<'_, Mutex<AppData>>, ui_request: UiRequest) {
+    log::debug!("Action Requested from UI: {:?}", ui_request);
     state.lock().unwrap().update_ui_request(ui_request);
 }
 
@@ -198,5 +202,5 @@ pub fn dispenser_is_busy(state: tauri::State<'_, Mutex<AppData>>) -> bool {
 
 #[tauri::command]
 pub fn dispenser_is_timed_out(state: tauri::State<'_, Mutex<AppData>>) -> bool {
-    state.lock().unwrap().dispenser_timed_out
+    state.lock().unwrap().dispenser_is_timed_out()
 }

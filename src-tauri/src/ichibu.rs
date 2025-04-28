@@ -123,7 +123,7 @@ async fn handle_running_state(
         let ichibu_state = state.get_state();
         ichibu_state
     };
-
+//Todo: log cleaning mode and empty mode here aka mode transition
     if matches!(ichibu_state, IchibuState::Cleaning) {
         let cleaning = DataAction::Cleaning;
         state.lock().unwrap().log_action(&cleaning);

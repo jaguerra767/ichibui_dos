@@ -2,14 +2,17 @@ use rusqlite::{params, Connection};
 use std::error::Error;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DataAction {
+    DispensedSmall,
+    DispensedRegular,
     DispensedSmall,
     DispensedRegular,
     Cleaning,
     Emptying,
     RanOut,
     Refilled,
+    CleaningModeOn
 }
 
 

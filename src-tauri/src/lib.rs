@@ -19,6 +19,7 @@ use log::info;
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
 
+
 pub mod config;
 pub mod data_logging;
 pub mod dispense;
@@ -140,7 +141,7 @@ pub fn run() {
                             log::error!("Scale runtime error: {}",e);
                        }
                     } else {
-                        log::warn!("Launching in demo mode");
+                        log::warn!("Unable to spawn scale, launching in demo mode");
                     }
                 }
             });
@@ -158,11 +159,12 @@ pub fn run() {
                                 update_pe_state(state, photo_eye.clone()).await;
                             },
                             None => {
+                                log::debug!("Waiting for state");
                                 continue
                             },
                         }
                         // Add a small delay between updates
-                        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     }
                 }
             });
