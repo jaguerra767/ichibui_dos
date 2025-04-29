@@ -33,6 +33,7 @@ async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
         state.lock().unwrap().get_pe_state(),
         PhotoEyeState::Unblocked
     ) {
+        log::info!("Waiting for photoeye input");
         sleep(Duration::from_millis(250)).await;
     }
 }
@@ -98,11 +99,12 @@ async fn handle_running_state(
     {
         state.lock().unwrap().set_dispenser_busy(true);
     }
+    log::info!("Starting primary dispense");
     dispenser.launch_dispense(setpoint, parameters).await;
     {
         state.lock().unwrap().set_dispenser_busy(false);
     }
-
+    log::info!("Primary dispense COMPLETE");
     handle_user_selection(state.clone(), dispenser, &snack).await;
 
     let ichibu_state = {
@@ -136,6 +138,7 @@ async fn handle_user_selection(
     snack: &Ingredient,
 ) {
     loop {
+        log::info!("Waiting for user input");
         let (request, ichibu_state) = {
             let state = state.lock().unwrap();
             let request = state.get_ui_request();
@@ -152,6 +155,7 @@ async fn handle_user_selection(
             state.lock().unwrap().log_action(&emptying);
             return;
         }
+
         match request {
             UiRequest::None => sleep(Duration::from_millis(250)).await,
             UiRequest::SmallDispense => {
@@ -167,6 +171,7 @@ async fn handle_user_selection(
                         setpoint: sp as f64,
                         timeout: Duration::from_micros(1000),
                     });
+                    log::info!("Starting secondary dispense");
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
@@ -176,6 +181,7 @@ async fn handle_user_selection(
                     {
                         state.lock().unwrap().set_dispenser_busy(false);
                     }
+                    log::info!("Secondary Dispense COMPLETE");
                 }
                 {
                     let regular_dispense = DataAction::DispensedRegular;

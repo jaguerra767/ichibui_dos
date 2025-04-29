@@ -148,22 +148,18 @@ pub fn run() {
                 let app_handle = app_handle.clone();
                 let scale_tx = scale_tx.clone();
                 async move {
-                    // Add a small delay to ensure the app is fully initialized
-                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     loop {
-
                         match app_handle.try_state::<Mutex<state::AppData>>() {
                             Some(state) => {
                                 update_node_level(state.clone(), empty_weight, scale_tx.clone()).await;
                                 update_pe_state(state, photo_eye.clone()).await;
                             },
                             None => {
-                                println!("Waiting for state");
                                 continue
                             },
                         }
                         // Add a small delay between updates
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
                     }
                 }
             });
