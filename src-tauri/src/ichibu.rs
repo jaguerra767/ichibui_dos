@@ -6,7 +6,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::sleep;
 
 use crate::config::Config;
-use crate::data_logging::{Data, DataAction};
+use crate::data_logging::DataAction;
 use crate::dispense::DispenseHandle;
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
