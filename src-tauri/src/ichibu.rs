@@ -24,7 +24,7 @@ pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale_tx: Sen
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
     let _ = hatch.close().await;
-    println!("Starting cycle loop");
+
     run_cycle_loop(state, &dispenser, &mut hatch).await;
 }
 
@@ -35,7 +35,6 @@ async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
     ) {
         sleep(Duration::from_millis(250)).await;
     }
-    println!("Photoeye Blocked!");
 }
 
 async fn run_cycle_loop(
