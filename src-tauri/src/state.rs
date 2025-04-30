@@ -56,7 +56,7 @@ impl AppData {
             current_snack: None,
         }
     }
-    //These methods are public so that they may be called from the controls routine
+
     pub fn log_action(&mut self, action: &DataAction) {
         let snack_id = if let Some(snack) = self.current_snack.as_ref() {
             Some(snack.id)
