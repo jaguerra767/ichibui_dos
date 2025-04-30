@@ -58,8 +58,13 @@ impl AppData {
     }
     //These methods are public so that they may be called from the controls routine
     pub fn log_action(&mut self, action: &DataAction) {
-        let snack_id = self.current_snack.as_ref().unwrap().id;
-        let _ = self.database.log(action, Some(snack_id));
+        let snack_id = if let Some(snack) = self.current_snack.as_ref() {
+            Some(snack.id)
+        } else {
+            None
+        };
+   
+        let _ = self.database.log(action, snack_id);
         self.bowl_count = self.database.get_bowl_count().unwrap();
     }
 
