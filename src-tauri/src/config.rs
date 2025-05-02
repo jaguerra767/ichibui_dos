@@ -29,6 +29,9 @@ pub struct HatchConfig {
     pub motor_id: usize,
     pub open_input: usize,
     pub close_input: usize,
+    pub velocity: f64,
+    pub acceleration: f64,
+    pub scale: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
