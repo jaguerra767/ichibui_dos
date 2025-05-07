@@ -6,6 +6,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::sleep;
 
 use crate::config::Config;
+use crate::data_logging::DataAction;
 use crate::dispense::DispenseHandle;
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
@@ -23,7 +24,7 @@ pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale_tx: Sen
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
     let _ = hatch.close().await;
-    println!("Starting cycle loop");
+
     run_cycle_loop(state, &dispenser, &mut hatch).await;
 }
 
@@ -32,9 +33,9 @@ async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
         state.lock().unwrap().get_pe_state(),
         PhotoEyeState::Unblocked
     ) {
+        log::info!("Waiting for photoeye input");
         sleep(Duration::from_millis(250)).await;
     }
-    println!("Photoeye Blocked!");
 }
 
 async fn run_cycle_loop(
@@ -104,8 +105,8 @@ async fn handle_running_state(
     {
         state.lock().unwrap().set_dispenser_busy(true);
     }
-    let dispense_result = dispenser.launch_dispense(setpoint, parameters).await;
-    println!("{:?}", dispense_result);
+    log::info!("Starting primary dispense");
+    dispenser.launch_dispense(setpoint, parameters).await;
     {
         let mut guard = state.lock().unwrap();
         guard.set_dispenser_busy(false);
@@ -114,7 +115,7 @@ async fn handle_running_state(
             return;
         }
     }
-
+    log::info!("Primary dispense COMPLETE");
     handle_user_selection(state.clone(), dispenser, &snack).await;
 
     let ichibu_state = {
@@ -124,9 +125,13 @@ async fn handle_running_state(
     };
 
     if matches!(ichibu_state, IchibuState::Cleaning) {
+        let cleaning = DataAction::Cleaning;
+        state.lock().unwrap().log_action(&cleaning);
         return;
     }
     if matches!(ichibu_state, IchibuState::Emptying) {
+        let emptying = DataAction::Emptying;
+        state.lock().unwrap().log_action(&emptying);
         return;
     }
 
@@ -135,7 +140,6 @@ async fn handle_running_state(
     }
     sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
-    state.log_dispense();
     state.reset_ui_request();
 }
 
@@ -145,6 +149,7 @@ async fn handle_user_selection(
     snack: &Ingredient,
 ) {
     loop {
+        log::info!("Waiting for user input");
         let (request, ichibu_state) = {
             let state = state.lock().unwrap();
             let request = state.get_ui_request();
@@ -152,37 +157,52 @@ async fn handle_user_selection(
             (request, ichibu_state)
         };
         if matches!(ichibu_state, IchibuState::Cleaning) {
+            let cleaning = DataAction::Cleaning;
+            state.lock().unwrap().log_action(&cleaning);
             return;
         }
         if matches!(ichibu_state, IchibuState::Emptying) {
+            let emptying = DataAction::Emptying;
+            state.lock().unwrap().log_action(&emptying);
             return;
         }
+
         match request {
             UiRequest::None => sleep(Duration::from_millis(250)).await,
-            UiRequest::SmallDispense => break,
+            UiRequest::SmallDispense => {
+                let small_dispense = DataAction::DispensedSmall;
+                state.lock().unwrap().log_action(&small_dispense);
+                break
+            },
             UiRequest::RegularDispense => {
+                
                 if matches!(ichibu_state, IchibuState::RunningSized) {
                     let sp = snack.max_setpoint - snack.min_setpoint;
                     let setpoint = Setpoint::Weight(WeightedDispense {
                         setpoint: sp as f64,
                         timeout: Duration::from_micros(1000),
                     });
+                    log::info!("Starting secondary dispense");
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
-
                     dispenser
                         .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
                         .await;
                     {
                         state.lock().unwrap().set_dispenser_busy(false);
                     }
+                    log::info!("Secondary Dispense COMPLETE");
+                }
+                {
+                    let regular_dispense = DataAction::DispensedRegular;
+                    state.lock().unwrap().log_action(&regular_dispense);
+                    
                 }
                 break;
             }
         }
     }
-
     wait_for_pe(state.clone()).await;
 }
 

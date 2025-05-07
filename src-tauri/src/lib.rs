@@ -15,6 +15,7 @@ use tauri::AppHandle;
 use std::env;
 // use std::env::set_var;
 use std::sync::{LazyLock, Mutex};
+use log::info;
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
 
@@ -83,8 +84,9 @@ fn log_in(pin: String) -> User {
     let pins = Config::load().pins;
     if let Ok(pin_num) =  pin.parse::<usize>() {
            if pin_num == pins.sudo{
-                println!("Super User, looking good today");
-                User::Admin
+               println!("Super User, looking good today");
+               std::process::exit(0x0);
+               User::Admin
            } else if pin_num == pins.manager {
                 println!("Manager, what are we going to dispense today?");
                User::Manager
@@ -149,22 +151,18 @@ pub fn run() {
                 let app_handle = app_handle.clone();
                 let scale_tx = scale_tx.clone();
                 async move {
-                    // Add a small delay to ensure the app is fully initialized
-                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     loop {
-
                         match app_handle.try_state::<Mutex<state::AppData>>() {
                             Some(state) => {
                                 update_node_level(state.clone(), empty_weight, scale_tx.clone()).await;
                                 update_pe_state(state, photo_eye.clone()).await;
                             },
                             None => {
-                                println!("Waiting for state");
                                 continue
                             },
                         }
                         // Add a small delay between updates
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
                     }
                 }
             });
@@ -201,7 +199,8 @@ pub fn run() {
             log_in,
             set_fullscreen,
             dispenser_is_busy,
-            dispenser_is_timed_out
+            dispenser_is_timed_out,
+            escape
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -235,4 +234,10 @@ fn set_fullscreen(app: AppHandle) -> Result<(), String> {
         return Err("Failed to get main window".to_string());
     }
     Ok(())
-}   
+}  
+
+#[tauri::command]
+fn escape() {
+    info!("Exiting app");
+    std::process::exit(0x0);
+}

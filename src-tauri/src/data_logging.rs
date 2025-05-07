@@ -4,7 +4,10 @@ use std::error::Error;
 
 #[derive(Debug)]
 pub enum DataAction {
-    Dispensed,
+    DispensedSmall,
+    DispensedRegular,
+    Cleaning,
+    Emptying,
     RanOut,
     Refilled,
 }
@@ -48,7 +51,7 @@ impl Data {
 
     pub fn log(
         &self,
-        action: DataAction,
+        action: &DataAction,
         ingredient: Option<usize>,
     ) -> rusqlite::Result<(), Box<dyn Error + Send + Sync>> {
         let curr_time = chrono::Utc::now().to_string();

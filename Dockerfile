@@ -56,8 +56,8 @@ COPY --from=builder /app/src-tauri/target/release/bundle /output
 # 1) Build the image
 #   $docker build -t tauri-app-builder -f Dockerfile .
 # 2) Create a temporary container. Does not run.
-#   $docker create --name temp-container tauri-app-builder /bin/true
+#   $docker create --name temp-container tauri-app-builder
 # 3) Extract the binary to Host ( ./output being the destination folder you want)
-#   $docker cp temp-container:/output ../output
+#   $docker cp temp-container:/output ./output
 # 4) Clean up
 #   $docker rm temp-container

@@ -53,7 +53,7 @@ pub fn initialize_controller(config: &Config) -> Controller {
             },
             MotorBuilder {
                 id: config.hatch.motor_id as u8,
-                scale: 200,
+                scale: config.hatch.scale,
             },
         ],
     );
@@ -71,6 +71,6 @@ pub async fn initialize_hatch(cc_handle: &Controller, config: &Config) -> Hatch 
         cc_handle.get_digital_input(config.hatch.open_input),
         cc_handle.get_digital_input(config.hatch.close_input),
     );
-    hatch.setup().await;
+    hatch.setup(&config.hatch).await;
     hatch
 }
