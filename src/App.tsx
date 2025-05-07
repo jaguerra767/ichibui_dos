@@ -27,11 +27,20 @@ function App() {
   const [user, setUser] = useState<User>(User.None)
   const [dispenseType, setDispenseType] = useState<DispenseType>(DispenseType.Classic);
 
+  const handleEscapeKeyPress = async (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+          console.log('Escape key pressed!');
+          await invoke('escape');
+      }
+  };
+
   useEffect(() => {
     const disableDrag = (event: DragEvent) => event.preventDefault();
   
     document.addEventListener("dragstart", disableDrag);
     document.addEventListener("drop", disableDrag);
+
+    document.addEventListener('keydown', handleEscapeKeyPress);
   
     return () => {
       document.removeEventListener("dragstart", disableDrag);
