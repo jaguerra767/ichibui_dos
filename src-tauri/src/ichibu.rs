@@ -106,7 +106,7 @@ async fn handle_running_state(
         state.lock().unwrap().set_dispenser_busy(true);
     }
     log::info!("Starting primary dispense");
-    dispenser.launch_dispense(setpoint, parameters).await;
+    let dispense_result = dispenser.launch_dispense(setpoint, parameters).await;
     {
         let mut guard = state.lock().unwrap();
         guard.set_dispenser_busy(false);
