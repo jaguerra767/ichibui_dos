@@ -85,14 +85,9 @@ fn log_in(pin: String) -> User {
     let pins = Config::load().pins;
     if let Ok(pin_num) =  pin.parse::<usize>() {
            if pin_num == pins.sudo{
-<<<<<<< HEAD
                println!("Super User, looking good today");
                std::process::exit(0x0);
                User::Admin
-=======
-                log::info!("Super User, looking good today");
-                User::Admin
->>>>>>> eae44f0 (pre-merge)
            } else if pin_num == pins.manager {
                 log::info!("Manager, what are we going to dispense today?");
                 User::Manager
