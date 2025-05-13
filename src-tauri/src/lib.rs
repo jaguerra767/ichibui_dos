@@ -10,10 +10,8 @@ use state::get_pe_blocked;
 use state::update_node_level;
 use state::update_pe_state;
 use state::{get_dispense_count, update_current_ingredient, update_run_state, update_ui_request, dispenser_is_busy};
-// use tauri::window;
 use tauri::AppHandle;
 use std::env;
-// use std::env::set_var;
 use std::sync::{LazyLock, Mutex};
 use log::info;
 use tauri::{ipc::Response, Manager};
@@ -87,7 +85,6 @@ fn log_in(pin: String) -> User {
            if pin_num == pins.sudo{
                println!("Super User, looking good today");
                std::process::exit(0x0);
-               User::Admin
            } else if pin_num == pins.manager {
                 log::info!("Manager, what are we going to dispense today?");
                 User::Manager
