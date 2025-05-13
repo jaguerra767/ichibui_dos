@@ -6,8 +6,6 @@ use std::error::Error;
 pub enum DataAction {
     DispensedSmall,
     DispensedRegular,
-    DispensedSmall,
-    DispensedRegular,
     Cleaning,
     Emptying,
     RanOut,
