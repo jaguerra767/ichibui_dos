@@ -1,31 +1,32 @@
-use control_components::components::scale::ScaleCmd;
-use control_components::subsystems::dispenser::{DispenseEndCondition, Parameters, Setpoint, WeightedDispense};
+use async_clear_core::motor::ClearCoreMotor;
+
+
 use std::sync::Mutex;
 use std::time::Duration;
-use tokio::sync::mpsc::Sender;
+
 use tokio::time::sleep;
 
 use crate::config::Config;
 use crate::data_logging::DataAction;
-use crate::dispense::DispenseHandle;
+
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
 use crate::io::{initialize_controller, initialize_hatch, PhotoEyeState};
 use crate::state::{AppData, IchibuState};
 use crate::UiRequest;
 
-pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale_tx: Sender<ScaleCmd>) {
+pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>) {
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
     let motor_id = config.motor.id;
-    let dispenser = DispenseHandle::new(cc_handle.get_motor(motor_id).clone(), scale_tx);
+
 
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
     let _ = hatch.close().await;
 
-    run_cycle_loop(state, &dispenser, &mut hatch).await;
+    run_cycle_loop(state, cc_handle.get_motor(motor_id),&mut hatch).await;
 }
 
 async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
@@ -40,9 +41,9 @@ async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
 
 async fn run_cycle_loop(
     state: tauri::State<'_, Mutex<AppData>>,
-    dispenser: &DispenseHandle,
+    motor: ClearCoreMotor,
     hatch: &mut Hatch,
-) {
+) ->anyhow::Result<()> {
     loop {
         let state = state.clone();
         let (ichibu_state, pe_state) = {
@@ -56,8 +57,9 @@ async fn run_cycle_loop(
                 if hatch.open().await.is_err() {
                     log::error!("Hatch Failed To Open")
                 }
-                dispenser.disable().await;
-                tokio::time::sleep(Duration::from_millis(1000)).await
+                motor.abrupt_stop().await?;
+                motor.disable().await?;
+                tokio::time::sleep(Duration::from_millis(10)).await;
             }
             IchibuState::Emptying => handle_emptying_state(dispenser, hatch, pe_state).await,
             IchibuState::Ready => tokio::time::sleep(Duration::from_millis(1000)).await,
@@ -66,6 +68,7 @@ async fn run_cycle_loop(
             }
         }
     }
+    Ok(())
 }
 
 async fn handle_running_state(
@@ -80,7 +83,7 @@ async fn handle_running_state(
         log::error!("Hatch Failed to Close");
     }
 
-    let timed_out = { state.lock().unwrap().dispenser_timed_out()};
+    let timed_out = { state.lock().unwrap().dispenser_timed_out() };
     if timed_out {
         println!("Skipping dispense because still timed out!");
         return;
@@ -123,7 +126,7 @@ async fn handle_running_state(
         let ichibu_state = state.get_state();
         ichibu_state
     };
-//Todo: log cleaning mode and empty mode here aka mode transition
+    //Todo: log cleaning mode and empty mode here aka mode transition
     if matches!(ichibu_state, IchibuState::Cleaning) {
         let cleaning = DataAction::Cleaning;
         state.lock().unwrap().log_action(&cleaning);
@@ -172,10 +175,9 @@ async fn handle_user_selection(
             UiRequest::SmallDispense => {
                 let small_dispense = DataAction::DispensedSmall;
                 state.lock().unwrap().log_action(&small_dispense);
-                break
-            },
+                break;
+            }
             UiRequest::RegularDispense => {
-                
                 if matches!(ichibu_state, IchibuState::RunningSized) {
                     let sp = snack.max_setpoint - snack.min_setpoint;
                     let setpoint = Setpoint::Weight(WeightedDispense {
@@ -197,7 +199,6 @@ async fn handle_user_selection(
                 {
                     let regular_dispense = DataAction::DispensedRegular;
                     state.lock().unwrap().log_action(&regular_dispense);
-                    
                 }
                 break;
             }
@@ -207,16 +208,18 @@ async fn handle_user_selection(
 }
 
 async fn handle_emptying_state(
-    dispenser: &DispenseHandle,
+    motor: ClearCoreMotor,
     hatch: &mut Hatch,
     pe_state: PhotoEyeState,
-) {
+) -> anyhow::Result<()> {
     if matches!(pe_state, PhotoEyeState::Blocked) {
         if hatch.open().await.is_err() {
             log::error!("Hatch Failed to Open")
         }
-        dispenser.empty().await;
+        motor.relative_move(1000.).await?;
     } else {
-        dispenser.disable().await;
+        motor.abrupt_stop().await?;
+        motor.disable().await?;
     }
+    Ok(())
 }

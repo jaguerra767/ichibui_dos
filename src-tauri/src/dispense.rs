@@ -1,126 +1,78 @@
-use std::time::Duration;
+use async_clear_core::motor::ClearCoreMotor;
+use crate::scale::{self, ScaleRequest};
+use crate::config::Config;
 
-use control_components::{
-    components::{clear_core_motor::ClearCoreMotor, scale::ScaleCmd},
-    subsystems::dispenser::{DispenseEndCondition, Dispenser, Parameters, Setpoint},
-};
+use log::{error, info};
+use tokio::sync::mpsc;
+use tokio::time::{Instant, MissedTickBehavior, interval};
+use anyhow::{Result, anyhow};
 
-use log::error;
-use tokio::sync::{mpsc, oneshot};
-
-struct Dispense {
-    receiver: mpsc::Receiver<DispenseMsg>,
-    scale_tx: mpsc::Sender<ScaleCmd>,
-    motor: ClearCoreMotor,
-    timeout: Duration,
+pub struct Parameters {
+    pub motor_speed: f64,
+    pub min_speed: f64,
+    pub check_offset: f64,
+    pub sample_rate: f64,
+    pub samples: usize,
+    pub reverse_before: Option<f64>,
+    pub reverse_after: Option<f64>
 }
 
-enum DispenseMsg {
-    LaunchDispense {
-        setpoint: Setpoint,
-        parameters: Parameters,
-        respond_to: oneshot::Sender<DispenseEndCondition>,
-    },
-    Enable,
-    Disable,
-    Empty,
+const MOTOR_MOVE_POS: f64 = 20.0;
+
+
+async fn update_motor_speed(motor: ClearCoreMotor, error: f64,min_speed:f64, max_speed: f64) -> Result<()>{ 
+    let speed = (error*max_speed).clamp(min_speed, max_speed);
+    motor.set_velocity(speed).await?;
+    motor.relative_move(MOTOR_MOVE_POS).await?;
+    Ok(())
 }
 
-impl Dispense {
-    fn new(
-        receiver: mpsc::Receiver<DispenseMsg>,
-        motor: ClearCoreMotor,
-        scale_tx: mpsc::Sender<ScaleCmd>,
-    ) -> Self {
-        let default_timeout = Duration::from_secs(30);
-        Self {
-            receiver,
-            scale_tx,
-            motor,
-            timeout: default_timeout,
-        }
+pub async fn dispense(qty: f64, parameters: Parameters, motor: ClearCoreMotor, tx: mpsc::Sender<ScaleRequest>) -> Result<f64> {
+
+    let config = tauri::async_runtime::spawn_blocking( ||{Config::load()}).await?;
+    let data_interval = config.phidget.data_interval;
+    let dispense_timeout = config.dispense.timeout;
+    let mut interval = interval(data_interval);
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    if let Some(rev) = parameters.reverse_before {
+        motor.relative_move(-rev).await?;
+        motor.wait_for_move(data_interval).await?
     }
 
-    async fn handle_msg(&self, msg: DispenseMsg) {
-        match msg {
-            DispenseMsg::LaunchDispense {
-                setpoint,
-                parameters,
-                respond_to,
-            } => {
-                let _ = self.motor.enable().await;
-                let dispense_result = Dispenser::new(
-                    self.motor.clone(),
-                    setpoint,
-                    parameters,
-                    self.scale_tx.clone(),
-                )
-                .dispense(self.timeout)
-                .await;
-                let _ = respond_to.send(dispense_result);
-            }
-            DispenseMsg::Disable => {
-                self.motor.abrupt_stop().await;
-                self.motor.disable().await;
-            }
-            DispenseMsg::Empty => {
-                let _ = self.motor.enable().await;
-                tokio::time::sleep(Duration::from_millis(1000)).await;
-                self.motor.clear_alerts().await;
-                self.motor.set_velocity(1.).await;
-                let _ = self.motor.relative_move(100.).await;
-            }
-            DispenseMsg::Enable => {
-                if let Err(e) = self.motor.enable().await {
-                    error!("Motor failed to enable{:?}", e)
-                }
+    let start_time = Instant::now();
+    let start_weight = scale::get_median_grams(tx.clone(), parameters.samples, data_interval).await?;
+    let target_weight = start_weight - qty;
+    
+    let result = loop {
+        let current_time = Instant::now();
+
+        if (current_time - start_time) > dispense_timeout {
+            motor.abrupt_stop().await;
+            return Err(anyhow!("Timed out!"));
+        }
+
+        let current_weight = scale::get_grams(tx.clone()).await?;
+        if current_weight < target_weight + parameters.check_offset {
+            motor.abrupt_stop().await?;
+            motor.wait_for_move(data_interval).await?;
+
+            info!("Checking weight");
+            let current_weight = scale::get_median_grams(tx.clone(), parameters.samples, data_interval).await?;
+            if current_weight < target_weight {
+                break current_weight;
+            } else {
+                motor.relative_move(MOTOR_MOVE_POS).await?;
             }
         }
-    }
-}
+        let error = (current_weight - target_weight)/qty;
+        update_motor_speed(motor.clone(), error, parameters.min_speed, parameters.motor_speed).await?;
+        interval.tick().await;
+    };
 
-async fn run_dispense_actor(mut dispense: Dispense) {
-    while let Some(msg) = dispense.receiver.recv().await {
-        dispense.handle_msg(msg).await;
-    }
-}
 
-#[derive(Clone)]
-pub struct DispenseHandle {
-    sender: mpsc::Sender<DispenseMsg>,
-}
-
-impl DispenseHandle {
-    pub fn new(motor: ClearCoreMotor, scale_tx: mpsc::Sender<ScaleCmd>) -> Self {
-        let (sender, receiver) = mpsc::channel(10);
-        let dispenser = Dispense::new(receiver, motor, scale_tx);
-        tauri::async_runtime::spawn(run_dispense_actor(dispenser));
-        Self { sender }
+    if let Some(rev) = parameters.reverse_after {
+        motor.relative_move(-rev).await?;
     }
-
-    pub async fn launch_dispense(&self, setpoint: Setpoint, parameters: Parameters) -> DispenseEndCondition {
-        let (send, recv) = oneshot::channel();
-        let msg = DispenseMsg::LaunchDispense {
-            setpoint,
-            parameters,
-            respond_to: send,
-        };
-        let _ = self.sender.send(msg).await;
-        recv.await.expect("Dispenser task has been killed")
-    }
-
-    pub async fn empty(&self) {
-        let msg = DispenseMsg::Empty {};
-        let _ = self.sender.send(msg).await;
-    }
-
-    pub async fn disable(&self) {
-        let msg = DispenseMsg::Disable {};
-        let _ = self.sender.send(msg).await;
-    }
-
-    pub async fn enable(&self) {
-        let msg = DispenseMsg::Enable {};
-        let _ = self.sender.send(msg).await;
-    }
+    Ok(result)
 }

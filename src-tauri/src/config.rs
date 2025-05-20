@@ -14,6 +14,8 @@ pub struct MotorConfig {
     pub id: usize,
     pub scale: usize,
     pub acceleration: f64,
+    pub min_speed: f64,
+    pub max_speed: f64
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,6 +40,10 @@ pub struct HatchConfig {
 pub struct PhidgetConfig {
     pub sn: i32,
     pub coefficients: [f64; 4],
+    #[serde(with = "duration_serde")]
+    pub data_interval: Duration,
+    #[serde(with = "duration_serde")]
+    pub timeout: Duration,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DispenseConfig {
@@ -53,7 +59,7 @@ pub struct SetpointConfig {
 pub struct Pins {
     pub sudo: usize,
     pub manager: usize,
-    pub operator: usize
+    pub operator: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,7 +71,7 @@ pub struct Config {
     pub addresses: Addresses,
     pub dispense: DispenseConfig,
     pub setpoint: SetpointConfig,
-    pub pins: Pins
+    pub pins: Pins,
 }
 
 impl Config {

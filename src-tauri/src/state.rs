@@ -33,19 +33,19 @@ pub enum NodeLevel {
 pub struct AppData {
     state: IchibuState,
     ui_request: UiRequest,
-    node_level: NodeLevel,
-    pe_state: io::PhotoEyeState,
     dispenser_busy: bool,
     dispenser_timed_out: bool,
     database: Data,
     bowl_count: i64,
     current_snack: Option<Ingredient>,
+    node_level: NodeLevel,
+    pe_state: PhotoEyeState,
 }
 
 impl AppData {
     pub fn new() -> Self {
         let (database, bowl_count) = io::initialize_database();
-       // let pe_state = io::photo_eye_state(&photo_eye).await;
+        // let pe_state = io::photo_eye_state(&photo_eye).await;
         Self {
             state: IchibuState::Ready,
             ui_request: UiRequest::None,
@@ -60,9 +60,8 @@ impl AppData {
     }
 
     pub fn log_action(&mut self, action: &DataAction) {
-        
         let snack_id = self.current_snack.as_ref().map(|snack| snack.id);
-   
+
         let _ = self.database.log(action, snack_id);
         self.bowl_count = self.database.get_bowl_count().unwrap();
     }
@@ -153,7 +152,10 @@ pub async fn update_node_level(
 pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack: usize) {
     if let Ok(res) = read_ingredient_config(HOME_DIRECTORY.as_str()) {
         if let Some(ingredient) = res.ingredients.iter().find(|ing| ing.id == snack) {
-            state.lock().unwrap().update_current_snack(ingredient.clone());
+            state
+                .lock()
+                .unwrap()
+                .update_current_snack(ingredient.clone());
         }
     }
 }
@@ -161,16 +163,17 @@ pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack:
 #[tauri::command]
 pub fn update_run_state(state: tauri::State<'_, Mutex<AppData>>, new_state: IchibuState) {
     let mut state_guard = state.lock().unwrap();
-    if matches!(state_guard.get_state(), IchibuState::Ready){
+    if matches!(state_guard.get_state(), IchibuState::Ready) {
         match new_state {
             IchibuState::Cleaning => {
                 let action = DataAction::Cleaning;
-                state_guard.log_action(&action)},
+                state_guard.log_action(&action)
+            }
             IchibuState::Emptying => {
                 let action = DataAction::Emptying;
                 state_guard.log_action(&action);
-            },
-            _ => ()
+            }
+            _ => (),
         }
     }
     state_guard.update_state(new_state);
