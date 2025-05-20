@@ -1,14 +1,15 @@
 use std::sync::Mutex;
 
-use tokio::sync::{mpsc::Sender, oneshot};
+use tokio::sync::mpsc::Sender;
 
-use control_components::components::{clear_core_io::DigitalInput, scale::ScaleCmd};
+use async_clear_core::io::DigitalInput;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     data_logging::{Data, DataAction},
     ingredients::{read_ingredient_config, Ingredient},
     io::{self, PhotoEyeState},
+    scale::{self, ScaleRequest},
     UiRequest, HOME_DIRECTORY,
 };
 
@@ -123,29 +124,30 @@ impl AppData {
 }
 
 //These are so that we can have a task updating these
-pub async fn update_pe_state(state: tauri::State<'_, Mutex<AppData>>, photo_eye: DigitalInput) {
-    let pe_state = io::photo_eye_state(&photo_eye).await;
+pub async fn update_pe_state(
+    state: tauri::State<'_, Mutex<AppData>>,
+    photo_eye: DigitalInput,
+) -> anyhow::Result<()> {
+    let pe_state = io::photo_eye_state(&photo_eye).await?;
     state.lock().unwrap().pe_state = pe_state;
+    Ok(())
 }
 
 pub async fn update_node_level(
     state: tauri::State<'_, Mutex<AppData>>,
     empty_weight: f64,
-    scale_tx: Sender<ScaleCmd>,
-) {
-    let (send, recv) = oneshot::channel();
-    let msg = ScaleCmd(send);
-    let _ = scale_tx.send(msg).await;
-    if let Ok(weight) = recv.await {
-        println!("weight: {}", weight);
-        let node_level = if weight > empty_weight {
-            state.lock().unwrap().set_dispenser_timed_out(false);
-            NodeLevel::Filled
-        } else {
-            NodeLevel::Empty
-        };
-        state.lock().unwrap().node_level = node_level;
-    }
+    scale_tx: Sender<ScaleRequest>,
+) -> anyhow::Result<()> {
+    let grams = scale::get_grams(scale_tx).await?;
+    log::info!("Current weight: {} g", grams);
+    let node_level = if grams > empty_weight {
+        state.lock().unwrap().set_dispenser_timed_out(false);
+        NodeLevel::Filled
+    } else {
+        NodeLevel::Empty
+    };
+    state.lock().unwrap().node_level = node_level;
+    Ok(())
 }
 
 #[tauri::command]

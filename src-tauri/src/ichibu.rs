@@ -1,5 +1,5 @@
 use async_clear_core::motor::ClearCoreMotor;
-
+use tokio::sync::mpsc;
 
 use std::sync::Mutex;
 use std::time::Duration;
@@ -9,24 +9,33 @@ use tokio::time::sleep;
 use crate::config::Config;
 use crate::data_logging::DataAction;
 
+use crate::dispense::{dispense, DispenserIo};
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
 use crate::io::{initialize_controller, initialize_hatch, PhotoEyeState};
+use crate::scale::ScaleRequest;
 use crate::state::{AppData, IchibuState};
 use crate::UiRequest;
 
-pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>) {
+pub async fn ichibu_cycle(
+    state: tauri::State<'_, Mutex<AppData>>,
+    scale_tx: mpsc::Sender<ScaleRequest>,
+) {
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
     let motor_id = config.motor.id;
 
-
-    let mut hatch = initialize_hatch(&cc_handle, &config).await;
+    let mut hatch = initialize_hatch(cc_handle.clone(), &config).await;
 
     let _ = hatch.close().await;
 
-    run_cycle_loop(state, cc_handle.get_motor(motor_id),&mut hatch).await;
+    let dispenser_io = DispenserIo {
+        motor: cc_handle.get_motor(motor_id),
+        scale: scale_tx,
+    };
+
+    run_cycle_loop(state, dispenser_io, &mut hatch).await;
 }
 
 async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
@@ -41,9 +50,9 @@ async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
 
 async fn run_cycle_loop(
     state: tauri::State<'_, Mutex<AppData>>,
-    motor: ClearCoreMotor,
+    dispenser_io: DispenserIo,
     hatch: &mut Hatch,
-) ->anyhow::Result<()> {
+) -> anyhow::Result<()> {
     loop {
         let state = state.clone();
         let (ichibu_state, pe_state) = {
@@ -52,28 +61,30 @@ async fn run_cycle_loop(
             let pe_state = state.get_pe_state();
             (ichibu_state, pe_state)
         };
+
+        let io = dispenser_io.clone();
         match ichibu_state {
             IchibuState::Cleaning => {
                 if hatch.open().await.is_err() {
                     log::error!("Hatch Failed To Open")
                 }
-                motor.abrupt_stop().await?;
-                motor.disable().await?;
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                io.clone().motor.abrupt_stop().await?;
+                io.clone().motor.disable().await?;
             }
-            IchibuState::Emptying => handle_emptying_state(dispenser, hatch, pe_state).await,
-            IchibuState::Ready => tokio::time::sleep(Duration::from_millis(1000)).await,
+            IchibuState::Emptying => {
+                handle_emptying_state(dispenser_io.clone().motor, hatch, pe_state).await?
+            }
+            IchibuState::Ready => tokio::time::sleep(Duration::from_millis(10)).await,
             IchibuState::RunningClassic | IchibuState::RunningSized => {
-                handle_running_state(state, dispenser, hatch).await
+                handle_running_state(state, io.clone(), hatch).await
             }
         }
     }
-    Ok(())
 }
 
 async fn handle_running_state(
     state: tauri::State<'_, Mutex<AppData>>,
-    dispenser: &DispenseHandle,
+    dispenser_io: DispenserIo,
     hatch: &mut Hatch,
 ) {
     //Make sure we don't keep the mutex lock as dispense blocks...
@@ -98,28 +109,43 @@ async fn handle_running_state(
         }
     };
 
-    let setpoint = Setpoint::Weight(WeightedDispense {
-        setpoint: setpoint as f64,
-        timeout: Duration::from_millis(30000),
-    });
-
-    let parameters = Parameters::from(&snack.dispense_parameters);
+    let parameters = crate::dispense::Parameters {
+        motor_speed: snack.dispense_parameters.motor_speed,
+        min_speed: 0.1,
+        check_offset: snack.dispense_parameters.check_offset,
+        sample_rate: 64.,
+        samples: 100,
+        reverse_before: {
+            if snack.dispense_parameters.retract_before {
+                Some(snack.dispense_parameters.retract_before_param)
+            } else {
+                None
+            }
+        },
+        reverse_after: {
+            if snack.dispense_parameters.retract_after {
+                Some(snack.dispense_parameters.retract_after_param)
+            } else {
+                None
+            }
+        },
+    };
 
     {
         state.lock().unwrap().set_dispenser_busy(true);
     }
     log::info!("Starting primary dispense");
-    let dispense_result = dispenser.launch_dispense(setpoint, parameters).await;
+    let dispense_result = dispense(dispenser_io.clone(), setpoint as f64, parameters).await;
     {
         let mut guard = state.lock().unwrap();
         guard.set_dispenser_busy(false);
-        if matches!(dispense_result, DispenseEndCondition::Timeout(_)) {
+        if dispense_result.is_err() {
             guard.set_dispenser_timed_out(true);
             return;
         }
     }
     log::info!("Primary dispense COMPLETE");
-    handle_user_selection(state.clone(), dispenser, &snack).await;
+    handle_user_selection(state.clone(), dispenser_io, &snack).await;
 
     let ichibu_state = {
         let state = state.lock().unwrap();
@@ -141,16 +167,16 @@ async fn handle_running_state(
     if hatch.open().await.is_err() {
         log::error!("Hatch open timed out!");
     }
-    sleep(Duration::from_millis(1000)).await;
+    sleep(Duration::from_millis(100)).await;
     let mut state = state.lock().unwrap();
     state.reset_ui_request();
 }
 
 async fn handle_user_selection(
     state: tauri::State<'_, Mutex<AppData>>,
-    dispenser: &DispenseHandle,
+    dispenser_io: DispenserIo,
     snack: &Ingredient,
-) {
+) -> anyhow::Result<()> {
     loop {
         log::info!("Waiting for user input");
         let (request, ichibu_state) = {
@@ -162,12 +188,12 @@ async fn handle_user_selection(
         if matches!(ichibu_state, IchibuState::Cleaning) {
             let cleaning = DataAction::Cleaning;
             state.lock().unwrap().log_action(&cleaning);
-            return;
+            return Ok(());
         }
         if matches!(ichibu_state, IchibuState::Emptying) {
             let emptying = DataAction::Emptying;
             state.lock().unwrap().log_action(&emptying);
-            return;
+            return Ok(());
         }
 
         match request {
@@ -180,17 +206,32 @@ async fn handle_user_selection(
             UiRequest::RegularDispense => {
                 if matches!(ichibu_state, IchibuState::RunningSized) {
                     let sp = snack.max_setpoint - snack.min_setpoint;
-                    let setpoint = Setpoint::Weight(WeightedDispense {
-                        setpoint: sp as f64,
-                        timeout: Duration::from_micros(1000),
-                    });
                     log::info!("Starting secondary dispense");
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
-                    dispenser
-                        .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
-                        .await;
+                    let parameters = crate::dispense::Parameters {
+                        motor_speed: snack.dispense_parameters.motor_speed,
+                        min_speed: 0.1,
+                        check_offset: snack.dispense_parameters.check_offset,
+                        sample_rate: 64.,
+                        samples: 100,
+                        reverse_before: {
+                            if snack.dispense_parameters.retract_before {
+                                Some(snack.dispense_parameters.retract_before_param)
+                            } else {
+                                None
+                            }
+                        },
+                        reverse_after: {
+                            if snack.dispense_parameters.retract_after {
+                                Some(snack.dispense_parameters.retract_after_param)
+                            } else {
+                                None
+                            }
+                        },
+                    };
+                    let _ = dispense(dispenser_io, sp as f64, parameters).await?;
                     {
                         state.lock().unwrap().set_dispenser_busy(false);
                     }
@@ -205,6 +246,7 @@ async fn handle_user_selection(
         }
     }
     wait_for_pe(state.clone()).await;
+    Ok(())
 }
 
 async fn handle_emptying_state(

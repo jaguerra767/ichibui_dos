@@ -2,40 +2,47 @@ use anyhow::Result;
 use libra::{scale::ConnectedScale, Grams, MedianGrams};
 use tokio::sync::oneshot;
 
-
-
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use tokio::sync::mpsc::{Sender, Receiver};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::Config;
 
-pub enum ScaleRequest{
-    GetGrams{
-        reply_to: oneshot::Sender<f64>
+pub enum ScaleRequest {
+    GetGrams {
+        reply_to: oneshot::Sender<f64>,
     },
-    GetMedianGrams{
+    GetMedianGrams {
         samples: usize,
         interval: Duration,
-        reply_to: oneshot::Sender<f64>
+        reply_to: oneshot::Sender<f64>,
     },
 }
 
 pub async fn get_grams(tx: Sender<ScaleRequest>) -> Result<f64> {
     let (reply_tx, reply_rx) = oneshot::channel::<f64>();
-    let _  = tx.send(ScaleRequest::GetGrams{reply_to: reply_tx}).await;
+    let _ = tx.send(ScaleRequest::GetGrams { reply_to: reply_tx }).await;
     let grams = reply_rx.await?;
     Ok(grams)
 }
 
-pub async fn get_median_grams(tx: Sender<ScaleRequest>, samples: usize, interval: Duration) -> Result<f64> {
+pub async fn get_median_grams(
+    tx: Sender<ScaleRequest>,
+    samples: usize,
+    interval: Duration,
+) -> Result<f64> {
     let (reply_tx, reply_rx) = oneshot::channel::<f64>();
-    let _ = tx.send(ScaleRequest::GetMedianGrams { samples, interval, reply_to: reply_tx }).await;
+    let _ = tx
+        .send(ScaleRequest::GetMedianGrams {
+            samples,
+            interval,
+            reply_to: reply_tx,
+        })
+        .await;
     let grams = reply_rx.await?;
     Ok(grams)
 }
-
 
 pub async fn scale_task(mut rx: Receiver<ScaleRequest>, interval: Duration) -> Result<()> {
     let config = Config::load();
@@ -45,14 +52,18 @@ pub async fn scale_task(mut rx: Receiver<ScaleRequest>, interval: Duration) -> R
     set_data_intervals(scale.clone(), interval).await?;
     while let Some(cmd) = rx.recv().await {
         match cmd {
-            ScaleRequest::GetGrams{reply_to} => {
+            ScaleRequest::GetGrams { reply_to } => {
                 let grams = read(scale.clone()).await?;
                 let _ = reply_to.send(grams.0);
-            },
-            ScaleRequest::GetMedianGrams { samples , interval, reply_to} => {
+            }
+            ScaleRequest::GetMedianGrams {
+                samples,
+                interval,
+                reply_to,
+            } => {
                 let grams = read_medians(scale.clone(), samples, interval).await?;
                 let _ = reply_to.send(grams.0);
-            },
+            }
         }
     }
     Ok(())
@@ -87,14 +98,11 @@ async fn connect_scale(timeout: Duration) -> Result<ConnectedScale> {
     .map_err(anyhow::Error::from)
 }
 
-async fn set_data_intervals(scale: Arc<Mutex<ConnectedScale>>, interval: Duration) -> Result<()>{
+async fn set_data_intervals(scale: Arc<Mutex<ConnectedScale>>, interval: Duration) -> Result<()> {
     let scale = scale.clone();
-    tauri::async_runtime::spawn_blocking(move ||{
+    tauri::async_runtime::spawn_blocking(move || {
         scale.lock().unwrap().set_data_intervals(interval)
     })
     .await??;
     Ok(())
 }
-
-
-

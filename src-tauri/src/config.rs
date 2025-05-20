@@ -15,7 +15,7 @@ pub struct MotorConfig {
     pub scale: usize,
     pub acceleration: f64,
     pub min_speed: f64,
-    pub max_speed: f64
+    pub max_speed: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

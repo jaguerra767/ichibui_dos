@@ -1,6 +1,9 @@
-use control_components::components::clear_core_io::DigitalInput;
-use control_components::components::clear_core_motor::ClearCoreMotor;
-use control_components::controllers::clear_core::{Controller, MotorBuilder};
+use async_clear_core::controller::ControllerHandle;
+use async_clear_core::io::DigitalInput;
+use async_clear_core::motor::ClearCoreMotor;
+use async_clear_core::motor::MotorBuilder;
+
+use anyhow::Result;
 use rusqlite::Connection;
 
 use crate::config::Config;
@@ -18,21 +21,24 @@ pub enum PhotoEyeState {
     Unblocked,
 }
 
-pub async fn photo_eye_state(input: &DigitalInput) -> PhotoEyeState {
-    if input.get_state().await {
-        PhotoEyeState::Blocked
+pub async fn photo_eye_state(input: &DigitalInput) -> Result<PhotoEyeState> {
+    if input.get_state().await? {
+        Ok(PhotoEyeState::Blocked)
     } else {
-        PhotoEyeState::Unblocked
+        Ok(PhotoEyeState::Unblocked)
     }
 }
 
-pub async fn setup_conveyor_motor(config: &Config, controller: &Controller) -> ClearCoreMotor {
+pub async fn setup_conveyor_motor(
+    config: &Config,
+    controller: ControllerHandle,
+) -> Result<ClearCoreMotor> {
     let motor_id = config.motor.id;
     let motor = controller.get_motor(motor_id);
-    motor.clear_alerts().await;
-    motor.set_acceleration(config.motor.acceleration).await;
-    motor.set_deceleration(config.motor.acceleration).await;
-    motor
+    motor.clear_alerts().await?;
+    motor.set_acceleration(config.motor.acceleration).await?;
+    motor.set_deceleration(config.motor.acceleration).await?;
+    Ok(motor)
 }
 
 pub fn initialize_database() -> (Data, i64) {
@@ -43,29 +49,32 @@ pub fn initialize_database() -> (Data, i64) {
     (database, bowl_count)
 }
 
-pub fn initialize_controller(config: &Config) -> Controller {
-    let (controller, controller_client) = Controller::with_client(
+pub fn initialize_controller(config: &Config) -> ControllerHandle {
+    let controller = ControllerHandle::new(
         config.addresses.clear_core.clone(),
-        &[
+        [
             MotorBuilder {
-                id: config.motor.id as u8,
+                id: config.motor.id,
                 scale: config.motor.scale,
             },
             MotorBuilder {
-                id: config.hatch.motor_id as u8,
+                id: config.hatch.motor_id,
+                scale: config.hatch.scale,
+            },
+            MotorBuilder {
+                id: 2,
+                scale: config.motor.scale,
+            },
+            MotorBuilder {
+                id: 3,
                 scale: config.hatch.scale,
             },
         ],
     );
-    tauri::async_runtime::spawn(async move {
-        if let Err(_) = controller_client.await {
-            log::warn!("No motor/io controller connected, running in demo mode");
-        }
-    });
     controller
 }
 
-pub async fn initialize_hatch(cc_handle: &Controller, config: &Config) -> Hatch {
+pub async fn initialize_hatch(cc_handle: ControllerHandle, config: &Config) -> Hatch {
     let mut hatch = Hatch::new(
         cc_handle.get_motor(config.hatch.motor_id),
         cc_handle.get_digital_input(config.hatch.open_input),

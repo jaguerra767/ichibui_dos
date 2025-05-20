@@ -1,6 +1,5 @@
 use config::Config;
-use control_components::components::scale::actor;
-use control_components::components::scale::Scale;
+
 use ichibu::ichibu_cycle;
 use ingredients::{read_ingredient_config, UiData};
 use io::initialize_controller;
@@ -16,6 +15,7 @@ use state::{
 };
 use std::env;
 use std::sync::{LazyLock, Mutex};
+use std::time::Duration;
 use tauri::AppHandle;
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
@@ -122,13 +122,8 @@ pub fn run() {
 
             tauri::async_runtime::spawn({
                 async move {
-                    let mut scale = Scale::new(config.phidget.sn);
-                    scale = Scale::change_coefficients(scale, coefficients.to_vec());
-                    if let Ok(scale) = scale.connect() {
-                        if let Err(e) = actor(scale, scale_rx).await {
-                            log::error!("Scale runtime error: {}", e);
-                        }
-                    } else {
+                    if let Err(e) = scale::scale_task(scale_rx, config.phidget.data_interval).await
+                    {
                         log::warn!("Unable to spawn scale, launching in demo mode");
                     }
                 }
