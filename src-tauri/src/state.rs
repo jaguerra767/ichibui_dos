@@ -43,6 +43,12 @@ pub struct AppData {
     pe_state: PhotoEyeState,
 }
 
+impl Default for AppData {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
 impl AppData {
     pub fn new() -> Self {
         let (database, bowl_count) = io::initialize_database();

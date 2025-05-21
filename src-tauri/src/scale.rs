@@ -91,8 +91,7 @@ async fn read_medians(
 
 async fn connect_scale(timeout: Duration) -> Result<ConnectedScale> {
     tauri::async_runtime::spawn_blocking(move || {
-        let scale = ConnectedScale::without_id(timeout);
-        scale
+        ConnectedScale::without_id(timeout)
     })
     .await?
     .map_err(anyhow::Error::from)

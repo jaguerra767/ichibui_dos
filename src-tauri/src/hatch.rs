@@ -1,7 +1,7 @@
 use crate::config::HatchConfig;
 use async_clear_core::io::DigitalInput;
 use async_clear_core::motor::ClearCoreMotor;
-use std::time::Duration;
+use std::{fmt, time::Duration};
 use tokio::time::{interval, Instant};
 
 // TODO: maybe put these in config as well?
@@ -10,6 +10,12 @@ pub const HATCH_STROKE: f64 = 100_000.;
 #[derive(Debug)]
 pub enum HatchError {
     Timeout,
+}
+
+impl fmt::Display for HatchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self )
+    }
 }
 pub struct Hatch {
     motor: ClearCoreMotor,
@@ -24,14 +30,15 @@ impl Hatch {
             close_input,
         }
     }
-    pub async fn setup(&mut self, config: &HatchConfig) {
-        self.motor.enable().await.unwrap();
-        self.motor.clear_alerts().await;
-        self.motor.set_velocity(config.velocity).await;
-        self.motor.set_acceleration(config.acceleration).await;
-        self.motor.set_deceleration(config.acceleration).await;
+    pub async fn setup(&mut self, config: &HatchConfig) -> anyhow::Result<()> {
+        self.motor.enable().await?;
+        self.motor.clear_alerts().await?;
+        self.motor.set_velocity(config.velocity).await?;
+        self.motor.set_acceleration(config.acceleration).await?;
+        self.motor.set_deceleration(config.acceleration).await?;
+        Ok(())
     }
-    pub async fn open(&mut self) -> Result<(), HatchError> {
+    pub async fn open(&mut self) -> anyhow::Result<()> {
         if self
             .open_input
             .get_state()
@@ -51,15 +58,15 @@ impl Hatch {
             .expect("Unable to get state from sensor")
         {
             if Instant::now() - start_time > HATCH_TIMEOUT {
-                self.motor.abrupt_stop().await;
-                return Err(HatchError::Timeout);
+                self.motor.abrupt_stop().await?;
+                return Err(anyhow::anyhow!(HatchError::Timeout));
             }
             interval.tick().await;
         }
-        self.motor.abrupt_stop().await;
+        self.motor.abrupt_stop().await?;
         Ok(())
     }
-    pub async fn close(&mut self) -> Result<(), HatchError> {
+    pub async fn close(&mut self) -> anyhow::Result<()> {
         if self
             .close_input
             .get_state()
@@ -78,13 +85,13 @@ impl Hatch {
             .expect("Unable to get state from sensor")
         {
             if Instant::now() - start_time > HATCH_TIMEOUT {
-                self.motor.abrupt_stop().await;
+                self.motor.abrupt_stop().await?;
                 self.motor.relative_move(-HATCH_STROKE).await.unwrap();
-                return Err(HatchError::Timeout);
+                return Err(anyhow::anyhow!(HatchError::Timeout));
             }
             interval.tick().await;
         }
-        self.motor.abrupt_stop().await;
+        self.motor.abrupt_stop().await?;
         Ok(())
     }
 }

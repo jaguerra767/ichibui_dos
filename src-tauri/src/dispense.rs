@@ -38,7 +38,7 @@ async fn update_motor_speed(
 }
 
 pub async fn dispense(io: DispenserIo, qty: f64, parameters: Parameters) -> Result<f64> {
-    let config = tauri::async_runtime::spawn_blocking(|| Config::load()).await?;
+    let config = tauri::async_runtime::spawn_blocking(Config::load).await?;
     let data_interval = config.phidget.data_interval;
     let dispense_timeout = config.dispense.timeout;
     let mut interval = interval(data_interval);
@@ -61,7 +61,7 @@ pub async fn dispense(io: DispenserIo, qty: f64, parameters: Parameters) -> Resu
         let current_time = Instant::now();
 
         if (current_time - start_time) > dispense_timeout {
-            motor.abrupt_stop().await;
+            motor.abrupt_stop().await?;
             return Err(anyhow!("Timed out!"));
         }
 

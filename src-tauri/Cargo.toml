@@ -28,7 +28,6 @@ tokio = { version = "1", features = ["time"] }
 
 env_logger = "0.11.3"
 log = "0.4.21"
-control-components = {git = "https://github.com/Caldo-Restaurant-Technologies/control-components.git"}
 libra = {git = "https://github.com/Caldo-Restaurant-Technologies/libra.git"}
 async-clear-core = {git = "https://github.com/Caldo-Restaurant-Technologies/async-clear-core-client.git"}
 rusqlite = { version = "0.28.0", features = ["bundled"] }

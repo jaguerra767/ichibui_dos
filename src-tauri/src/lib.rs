@@ -15,7 +15,6 @@ use state::{
 };
 use std::env;
 use std::sync::{LazyLock, Mutex};
-use std::time::Duration;
 use tauri::AppHandle;
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
@@ -114,8 +113,6 @@ pub fn run() {
         .setup(move |app| {
             let app_handle = app.app_handle();
 
-            let coefficients = config.phidget.coefficients;
-
             //Lets spawn the scale
 
             let (scale_tx, scale_rx) = channel(10);
@@ -124,6 +121,7 @@ pub fn run() {
                 async move {
                     if let Err(e) = scale::scale_task(scale_rx, config.phidget.data_interval).await
                     {
+                        log::error!("Scale Error: {}", e);
                         log::warn!("Unable to spawn scale, launching in demo mode");
                     }
                 }
@@ -138,9 +136,13 @@ pub fn run() {
                     loop {
                         match app_handle.try_state::<Mutex<state::AppData>>() {
                             Some(state) => {
-                                update_node_level(state.clone(), empty_weight, scale_tx.clone())
-                                    .await;
-                                update_pe_state(state, photo_eye.clone()).await;
+                                if update_node_level(state.clone(), empty_weight, scale_tx.clone())
+                                    .await.is_err(){
+                                        log::error!("Update Node Level Error");
+                                    };
+                                if update_pe_state(state, photo_eye.clone()).await.is_err(){
+                                    log::error!("Update PE State Error");
+                                };
                             }
                             None => {
                                 log::debug!("Waiting for state");
@@ -167,7 +169,7 @@ pub fn run() {
                             None => tokio::time::sleep(std::time::Duration::from_millis(50)).await,
                         }
                     };
-                    ichibu_cycle(state, scale_tx.clone()).await;
+                    ichibu_cycle(state, scale_tx.clone()).await.expect("Fatal Error, ichibu cycle crashed");
                 }
             });
             Ok(())

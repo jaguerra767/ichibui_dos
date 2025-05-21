@@ -20,22 +20,23 @@ use crate::UiRequest;
 pub async fn ichibu_cycle(
     state: tauri::State<'_, Mutex<AppData>>,
     scale_tx: mpsc::Sender<ScaleRequest>,
-) {
+) -> anyhow::Result<()> {
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
     let motor_id = config.motor.id;
 
-    let mut hatch = initialize_hatch(cc_handle.clone(), &config).await;
+    let mut hatch = initialize_hatch(cc_handle.clone(), &config).await?;
 
-    let _ = hatch.close().await;
+    hatch.close().await?;
 
     let dispenser_io = DispenserIo {
         motor: cc_handle.get_motor(motor_id),
         scale: scale_tx,
     };
 
-    run_cycle_loop(state, dispenser_io, &mut hatch).await;
+    run_cycle_loop(state, dispenser_io, &mut hatch).await?;
+    Ok(())
 }
 
 async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
@@ -76,7 +77,7 @@ async fn run_cycle_loop(
             }
             IchibuState::Ready => tokio::time::sleep(Duration::from_millis(10)).await,
             IchibuState::RunningClassic | IchibuState::RunningSized => {
-                handle_running_state(state, io.clone(), hatch).await
+                handle_running_state(state, io.clone(), hatch).await?;
             }
         }
     }
@@ -86,7 +87,7 @@ async fn handle_running_state(
     state: tauri::State<'_, Mutex<AppData>>,
     dispenser_io: DispenserIo,
     hatch: &mut Hatch,
-) {
+) -> anyhow::Result<()>{
     //Make sure we don't keep the mutex lock as dispense blocks...
 
     let snack = { state.lock().unwrap().get_snack().unwrap().clone() };
@@ -97,7 +98,7 @@ async fn handle_running_state(
     let timed_out = { state.lock().unwrap().dispenser_timed_out() };
     if timed_out {
         println!("Skipping dispense because still timed out!");
-        return;
+        return Ok(());
     }
 
     let setpoint = {
@@ -141,27 +142,26 @@ async fn handle_running_state(
         guard.set_dispenser_busy(false);
         if dispense_result.is_err() {
             guard.set_dispenser_timed_out(true);
-            return;
+            return Ok(());
         }
     }
     log::info!("Primary dispense COMPLETE");
-    handle_user_selection(state.clone(), dispenser_io, &snack).await;
+    handle_user_selection(state.clone(), dispenser_io, &snack).await?;
 
     let ichibu_state = {
         let state = state.lock().unwrap();
-        let ichibu_state = state.get_state();
-        ichibu_state
+        state.get_state()
     };
     //Todo: log cleaning mode and empty mode here aka mode transition
     if matches!(ichibu_state, IchibuState::Cleaning) {
         let cleaning = DataAction::Cleaning;
         state.lock().unwrap().log_action(&cleaning);
-        return;
+        return Ok(());
     }
     if matches!(ichibu_state, IchibuState::Emptying) {
         let emptying = DataAction::Emptying;
         state.lock().unwrap().log_action(&emptying);
-        return;
+        return Ok(());
     }
 
     if hatch.open().await.is_err() {
@@ -170,6 +170,7 @@ async fn handle_running_state(
     sleep(Duration::from_millis(100)).await;
     let mut state = state.lock().unwrap();
     state.reset_ui_request();
+    Ok(())
 }
 
 async fn handle_user_selection(

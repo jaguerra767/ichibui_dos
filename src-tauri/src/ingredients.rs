@@ -1,6 +1,7 @@
-use control_components::subsystems::dispenser::Parameters;
 use serde::Serialize;
 use serde_derive::Deserialize;
+
+use crate::dispense::Parameters;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UiData {
@@ -54,13 +55,13 @@ impl Default for DispenseParameters {
 
 impl From<&DispenseParameters> for Parameters {
     fn from(value: &DispenseParameters) -> Self {
-        let retract_before = if value.retract_before {
+        let reverse_before = if value.retract_before {
             Some(value.retract_before_param)
         } else {
             None
         };
 
-        let retract_after = if value.retract_after {
+        let reverse_after = if value.retract_after {
             Some(value.retract_after_param)
         } else {
             None
@@ -69,11 +70,11 @@ impl From<&DispenseParameters> for Parameters {
         Self {
             motor_speed: value.motor_speed,
             sample_rate: value.sample_rate,
-            cutoff_frequency: value.cutoff_freq,
             check_offset: value.check_offset,
-            stop_offset: value.stop_offset,
-            retract_before,
-            retract_after,
+            reverse_before,
+            reverse_after,
+            min_speed: 0.1,
+            samples: 64,
         }
     }
 }

@@ -50,7 +50,7 @@ pub fn initialize_database() -> (Data, i64) {
 }
 
 pub fn initialize_controller(config: &Config) -> ControllerHandle {
-    let controller = ControllerHandle::new(
+    ControllerHandle::new(
         config.addresses.clear_core.clone(),
         [
             MotorBuilder {
@@ -70,16 +70,15 @@ pub fn initialize_controller(config: &Config) -> ControllerHandle {
                 scale: config.hatch.scale,
             },
         ],
-    );
-    controller
+    )
 }
 
-pub async fn initialize_hatch(cc_handle: ControllerHandle, config: &Config) -> Hatch {
+pub async fn initialize_hatch(cc_handle: ControllerHandle, config: &Config) -> anyhow::Result<Hatch>{
     let mut hatch = Hatch::new(
         cc_handle.get_motor(config.hatch.motor_id),
         cc_handle.get_digital_input(config.hatch.open_input),
         cc_handle.get_digital_input(config.hatch.close_input),
     );
-    hatch.setup(&config.hatch).await;
-    hatch
+    hatch.setup(&config.hatch).await?;
+    Ok(hatch)
 }
