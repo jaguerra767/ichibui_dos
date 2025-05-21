@@ -99,6 +99,7 @@ async fn handle_running_state(
     {
         state.lock().unwrap().set_dispenser_busy(true);
     }
+    sleep(Duration::from_millis(2000)).await;
     log::info!("Starting primary dispense");
     dispenser.launch_dispense(setpoint, parameters).await;
     {
