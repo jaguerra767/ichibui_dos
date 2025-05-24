@@ -1,7 +1,6 @@
 use rusqlite::{params, Connection};
 use std::error::Error;
 
-
 #[derive(Debug)]
 pub enum DataAction {
     DispensedSmall,
@@ -11,7 +10,6 @@ pub enum DataAction {
     RanOut,
     Refilled,
 }
-
 
 pub struct Data {
     database: Connection,

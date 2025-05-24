@@ -53,7 +53,7 @@ pub struct SetpointConfig {
 pub struct Pins {
     pub sudo: usize,
     pub manager: usize,
-    pub operator: usize
+    pub operator: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,7 +65,7 @@ pub struct Config {
     pub addresses: Addresses,
     pub dispense: DispenseConfig,
     pub setpoint: SetpointConfig,
-    pub pins: Pins
+    pub pins: Pins,
 }
 
 impl Config {

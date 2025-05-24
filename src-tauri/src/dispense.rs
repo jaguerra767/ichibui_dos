@@ -98,7 +98,11 @@ impl DispenseHandle {
         Self { sender }
     }
 
-    pub async fn launch_dispense(&self, setpoint: Setpoint, parameters: Parameters) ->DispenseEndCondition {
+    pub async fn launch_dispense(
+        &self,
+        setpoint: Setpoint,
+        parameters: Parameters,
+    ) -> DispenseEndCondition {
         let (send, recv) = oneshot::channel();
         let msg = DispenseMsg::LaunchDispense {
             setpoint,
