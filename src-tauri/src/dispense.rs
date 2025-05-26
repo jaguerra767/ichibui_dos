@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use control_components::{
-    components::{clear_core_motor::ClearCoreMotor, scale::ScaleCmd},
+    components::{clear_core_motor::{Status, ClearCoreMotor}, scale::ScaleCmd},
     subsystems::dispenser::{DispenseEndCondition, Dispenser, Parameters, Setpoint},
 };
 
@@ -48,7 +48,13 @@ impl Dispense {
                 parameters,
                 respond_to,
             } => {
-                let _ = self.motor.enable().await;
+                let motor_status = self.motor.get_status().await;
+                if matches!(motor_status, Status::Ready) {
+                    self.motor.clear_alerts().await;
+                    if let Err(e) = self.motor.enable().await {
+                        log::error!("Unable to enable motor: {:?}", e);
+                    }
+                }
                 let dispense_condition = Dispenser::new(
                     self.motor.clone(),
                     setpoint,

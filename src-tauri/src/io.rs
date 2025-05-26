@@ -30,6 +30,7 @@ pub async fn setup_conveyor_motor(config: &Config, controller: &Controller) -> C
     let motor_id = config.motor.id;
     let motor = controller.get_motor(motor_id);
     motor.clear_alerts().await;
+    let _ = motor.enable().await;
     motor.set_acceleration(config.motor.acceleration).await;
     //motor.set_deceleration(config.motor.acceleration).await;
     motor

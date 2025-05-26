@@ -116,7 +116,9 @@ async fn handle_running_state(
                 if state_guard.cycle_dispense_count > 2 {
                     log::info!("Oh fuck we timed out");
                     state_guard.dispenser_has_timed_out = true;
-                    state_guard.update_state(IchibuState::Ready)
+                    state_guard.update_state(IchibuState::Ready);
+                    let action = DataAction::RanOut;
+                    state_guard.log_action(&action);
                 }
             }
             DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
@@ -194,6 +196,9 @@ async fn handle_user_selection(
                 let mut state_guard = state.lock().unwrap();
                 if !state_guard.dispenser_has_timed_out {
                     state_guard.log_action(&small_dispense);
+                } else {
+                    let action = DataAction::RanOut;
+                    state_guard.log_action(&action);
                 }
                 break;
             }
@@ -222,7 +227,9 @@ async fn handle_user_selection(
                         DispenseEndCondition::Timeout(_) => {
                             if state_guard.cycle_dispense_count > 2 {
                                 state_guard.dispenser_has_timed_out = true;
-                                state_guard.update_state(IchibuState::Ready)
+                                state_guard.update_state(IchibuState::Ready);
+                                let action = DataAction::RanOut;
+                                state_guard.log_action(&action);
                             }
                         }
                         DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
@@ -232,7 +239,7 @@ async fn handle_user_selection(
                 }
                 {
                     let state_guard = state.lock().unwrap();
-                    if state_guard.dispenser_has_timed_out {
+                    if !state_guard.dispenser_has_timed_out {
                         let regular_dispense = DataAction::DispensedRegular;
                         state.lock().unwrap().log_action(&regular_dispense);
                     }

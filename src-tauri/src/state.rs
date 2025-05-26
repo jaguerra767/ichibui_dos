@@ -198,4 +198,6 @@ pub fn clear_dispenser_time_out(state: tauri::State<'_, Mutex<AppData>>) {
     let mut state_guard = state.lock().unwrap();
     state_guard.dispenser_has_timed_out = false;
     state_guard.cycle_dispense_count = 0;
+    let action = DataAction::Refilled;
+    state_guard.log_action(&action);
 }
