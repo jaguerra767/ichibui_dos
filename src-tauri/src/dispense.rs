@@ -5,7 +5,7 @@ use control_components::{
     subsystems::dispenser::{DispenseEndCondition, Dispenser, Parameters, Setpoint},
 };
 
-use log::error;
+use log::{error, info};
 use tokio::sync::{mpsc, oneshot};
 
 struct Dispense {
@@ -57,6 +57,7 @@ impl Dispense {
                 )
                 .dispense(self.timeout)
                 .await;
+                info!("Dispenser end condition: {:?}", dispense_condition);
                 let _ = respond_to.send(dispense_condition);
             }
             DispenseMsg::Disable => {

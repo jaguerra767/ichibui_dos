@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 
+use log::info;
 use tokio::sync::{mpsc::Sender, oneshot};
 
 use control_components::components::{clear_core_io::DigitalInput, scale::ScaleCmd};
@@ -188,10 +189,12 @@ pub fn dispenser_is_busy(state: tauri::State<'_, Mutex<AppData>>) -> bool {
 
 #[tauri::command]
 pub fn dispenser_has_timed_out(state: tauri::State<'_, Mutex<AppData>>) -> bool {
+    info!("Dispenser state requested");
     state.lock().unwrap().dispenser_has_timed_out
 }
 
 #[tauri::command]
 pub fn clear_dispenser_time_out(state: tauri::State<'_, Mutex<AppData>>) {
+    info!("Dispenser state cleared");
     state.lock().unwrap().dispenser_has_timed_out = false;
 }
