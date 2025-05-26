@@ -58,7 +58,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
         const baseClasses = "w-full h-[150px] text-5xl font-bold focus:outline-none focus:ring-0 border-0";
         const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-700';
         const notReadyClass = 'bg-gray-500 hover:bg-gray-500 active:bg-gray-500';
-        const timedOutClass = "='bg-destructive hover:bg-destructive active:bg-destructive";
+        const timedOutClass = 'bg-destructive hover:bg-destructive active:bg-destructive';
 
         if(timedOut) {
             return `${baseClasses} ${timedOutClass}`;
@@ -166,7 +166,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                             {dispenserBusy && <span className="text-white text-2xl">Dispensing...</span>}
                         </div>*/}
                         <div className="flex items-center justify-center py-7">
-                            {dispenserBusy && <SoundWave/>}
+                            {!timedOut && dispenserBusy && <SoundWave/>}
                         </div>
                     </div>
                 </div>
