@@ -140,13 +140,10 @@ pub fn run() {
                 let scale_tx = scale_tx.clone();
                 async move {
                     loop {
-                        match app_handle.try_state::<Mutex<state::AppData>>() {
-                            Some(state) => {
-                                update_node_level(state.clone(), empty_weight, scale_tx.clone())
+                        if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
+                            update_node_level(state.clone(), empty_weight, scale_tx.clone())
                                     .await;
-                                update_pe_state(state, photo_eye.clone()).await;
-                            }
-                            None => continue,
+                            update_pe_state(state, photo_eye.clone()).await;
                         }
                         // Add a small delay between updates
                         tokio::time::sleep(std::time::Duration::from_millis(250)).await;
@@ -161,11 +158,10 @@ pub fn run() {
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     let state = loop {
                         //wait for state to become available
-                        match app_handle.try_state::<Mutex<state::AppData>>() {
-                            Some(state) => {
-                                break state;
-                            }
-                            None => tokio::time::sleep(std::time::Duration::from_millis(50)).await,
+                        if let Some(state) = app_handle.try_state::<Mutex<state::AppData>> ()  {    
+                            break state;
+                        } else {
+                            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                         }
                     };
                     ichibu_cycle(state, scale_tx.clone()).await;
