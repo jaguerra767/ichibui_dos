@@ -114,6 +114,7 @@ async fn handle_running_state(
             }
             DispenseEndCondition::Timeout(_) => {
                 if state_guard.cycle_dispense_count > 5 {
+                    log::info!("Oh fuck we timed out");
                     state_guard.dispenser_has_timed_out = true;
                     state_guard.update_state(IchibuState::Ready)
                 }

@@ -189,7 +189,6 @@ pub fn dispenser_is_busy(state: tauri::State<'_, Mutex<AppData>>) -> bool {
 
 #[tauri::command]
 pub fn dispenser_has_timed_out(state: tauri::State<'_, Mutex<AppData>>) -> bool {
-    info!("Dispenser state requested");
     state.lock().unwrap().dispenser_has_timed_out
 }
 
