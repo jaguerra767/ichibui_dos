@@ -12,7 +12,7 @@ use crate::data_logging::DataAction;
 use crate::dispense::DispenseHandle;
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
-use crate::io::{initialize_controller, initialize_hatch, PhotoEyeState};
+use crate::io::{initialize_controller, initialize_hatch, setup_conveyor_motor, PhotoEyeState};
 use crate::state::{AppData, IchibuState};
 use crate::UiRequest;
 
@@ -20,8 +20,8 @@ pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale_tx: Sen
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
-    let motor_id = config.motor.id;
-    let dispenser = DispenseHandle::new(cc_handle.get_motor(motor_id).clone(), scale_tx);
+    let motor = setup_conveyor_motor(&config, &cc_handle).await;
+    let dispenser = DispenseHandle::new(motor, scale_tx);
 
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
