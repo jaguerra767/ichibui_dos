@@ -86,7 +86,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ currentUser, currentDispens
               className="w-full text-4xl h-32 bg-blue-500"
               onClick={() => handleTimeoutReset()}
             >
-              Clean Mode
+              Refill Hopper
             </Button>
           </div>
           <div onClick={handleItemClick} className="px-2 py-1.5">
