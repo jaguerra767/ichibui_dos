@@ -113,7 +113,7 @@ async fn handle_running_state(
                 log::info!("Primary dispense COMPLETE");
             }
             DispenseEndCondition::Timeout(_) => {
-                if state_guard.cycle_dispense_count > 5 {
+                if state_guard.cycle_dispense_count > 2 {
                     log::info!("Oh fuck we timed out");
                     state_guard.dispenser_has_timed_out = true;
                     state_guard.update_state(IchibuState::Ready)
@@ -153,6 +153,7 @@ async fn handle_running_state(
     }
     sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
+    state.cycle_dispense_count = state.cycle_dispense_count + 1;
     state.reset_ui_request();
 }
 
