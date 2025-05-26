@@ -195,5 +195,7 @@ pub fn dispenser_has_timed_out(state: tauri::State<'_, Mutex<AppData>>) -> bool 
 #[tauri::command]
 pub fn clear_dispenser_time_out(state: tauri::State<'_, Mutex<AppData>>) {
     info!("Dispenser state cleared");
-    state.lock().unwrap().dispenser_has_timed_out = false;
+    let mut state_guard = state.lock().unwrap();
+    state_guard.dispenser_has_timed_out = false;
+    state_guard.cycle_dispense_count = 0;
 }

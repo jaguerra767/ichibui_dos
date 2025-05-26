@@ -162,8 +162,8 @@ async fn handle_user_selection(
     dispenser: &DispenseHandle,
     snack: &Ingredient,
 ) {
+    log::info!("Waiting for user input");
     loop {
-        log::info!("Waiting for user input");
         let (request, ichibu_state) = {
             let state = state.lock().unwrap();
             let request = state.get_ui_request();
@@ -220,7 +220,7 @@ async fn handle_user_selection(
                             log::info!("Primary dispense COMPLETE");
                         }
                         DispenseEndCondition::Timeout(_) => {
-                            if state_guard.cycle_dispense_count > 5 {
+                            if state_guard.cycle_dispense_count > 2 {
                                 state_guard.dispenser_has_timed_out = true;
                                 state_guard.update_state(IchibuState::Ready)
                             }
