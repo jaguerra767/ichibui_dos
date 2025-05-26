@@ -6,6 +6,7 @@ use ingredients::{read_ingredient_config, UiData};
 use io::initialize_controller;
 use log::info;
 use serde::{Deserialize, Serialize};
+use state::clear_dispenser_time_out;
 use state::dispenser_has_timed_out;
 use state::get_pe_blocked;
 use state::update_node_level;
@@ -181,6 +182,7 @@ pub fn run() {
             set_fullscreen,
             dispenser_is_busy,
             dispenser_has_timed_out,
+            clear_dispenser_time_out,
             escape
         ])
         .run(tauri::generate_context!())

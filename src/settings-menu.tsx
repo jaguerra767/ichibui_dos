@@ -29,6 +29,13 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ currentUser, currentDispens
     setDispenseType(checked ? DispenseType.LargeSmall : DispenseType.Classic);
   };
 
+  const handleTimeoutReset = async () => {
+    try {
+      await invoke("clear_dispenser_time_out");
+    } catch (error) {
+      console.error("failed to clear dispenser timeout: ", error);
+    }
+  }
   const handleButton = async (state: IchibuState) => {
     try {
       await invoke("update_run_state", { newState: state });
@@ -74,6 +81,14 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ currentUser, currentDispens
               </div>
             </div>
           )}
+          <div onClick={handleItemClick} className="px-2 py-1.5">
+            <Button 
+              className="w-full text-4xl h-32 bg-blue-500"
+              onClick={() => handleTimeoutReset()}
+            >
+              Clean Mode
+            </Button>
+          </div>
           <div onClick={handleItemClick} className="px-2 py-1.5">
             <Button 
               className="w-full text-4xl h-32 bg-blue-500"
