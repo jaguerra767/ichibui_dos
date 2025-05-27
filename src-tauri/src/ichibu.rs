@@ -224,8 +224,8 @@ async fn handle_user_selection(
                     match dispense {
                         DispenseEndCondition::WeightAchieved(_) => {
                             log::info!("Primary dispense COMPLETE");
-                            let action = &DataAction::DispensedRegular;
-                            state_guard.log_action(action);
+                            // let action = &DataAction::DispensedRegular;
+                            // state_guard.log_action(action);
                         }
                         DispenseEndCondition::Timeout(_) => {
                             if state_guard.cycle_dispense_count > 2 {
