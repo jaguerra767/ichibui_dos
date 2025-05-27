@@ -24,10 +24,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_derive = "1.0"
 toml = "0.7"
-tokio = { version = "1", features = ["time"] }
+tokio = { version = "1", features = ["time", "tracing"] }
 
 env_logger = "0.11.3"
 log = "0.4.21"
 control-components = {git = "https://github.com/Caldo-Restaurant-Technologies/control-components.git"}
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 chrono = "0.4.38"
+console-subscriber = "0.4.1"
+

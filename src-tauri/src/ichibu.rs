@@ -156,6 +156,7 @@ async fn handle_running_state(
     sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
     state.cycle_dispense_count = state.cycle_dispense_count + 1;
+    log::info!("Dispense count: {}", state.cycle_dispense_count);
     state.reset_ui_request();
 }
 
@@ -245,6 +246,7 @@ async fn handle_user_selection(
                     }
                     
                 }
+                log::info!("Breaking out of handle_user_selection");
                 break;
             }
         }
