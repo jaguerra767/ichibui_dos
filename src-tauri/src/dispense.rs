@@ -49,7 +49,7 @@ impl Dispense {
                 respond_to,
             } => {
                 let motor_status = self.motor.get_status().await;
-                if matches!(motor_status, Status::Ready) {
+                if !matches!(motor_status, Status::Ready) {
                     self.motor.clear_alerts().await;
                     if let Err(e) = self.motor.enable().await {
                         log::error!("Unable to enable motor: {:?}", e);
