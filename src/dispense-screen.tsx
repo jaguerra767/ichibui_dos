@@ -41,7 +41,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     // Function to get the main button's text based on PE blocked state
     const getButtonText = () => {
         if(timedOut) {
-            return 'Empty, please refill'
+            return 'Empty, please refill!'
         }
         if(!peBlocked) {
             return 'Please place bowl in bay below';

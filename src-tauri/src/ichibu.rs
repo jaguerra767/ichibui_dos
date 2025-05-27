@@ -224,6 +224,8 @@ async fn handle_user_selection(
                     match dispense {
                         DispenseEndCondition::WeightAchieved(_) => {
                             log::info!("Primary dispense COMPLETE");
+                            let action = &DataAction::DispensedRegular;
+                            state_guard.log_action(action);
                         }
                         DispenseEndCondition::Timeout(_) => {
                             if state_guard.cycle_dispense_count > 2 {
@@ -232,20 +234,13 @@ async fn handle_user_selection(
                                 let action = DataAction::RanOut;
                                 state_guard.log_action(&action);
                             }
+                            break; //MAY HAVE TO REMOVE THIS
                         }
                         DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
                     }
             
                     log::info!("Secondary Dispense COMPLETE");
                 }
-                // {
-                //     let state_guard = state.lock().unwrap();
-                //     if !state_guard.dispenser_has_timed_out {
-                //         let regular_dispense = DataAction::DispensedRegular;
-                //         state.lock().unwrap().log_action(&regular_dispense);
-                //     }
-                    
-                // }
                 log::info!("Breaking out of handle_user_selection");
                 break;
             }
