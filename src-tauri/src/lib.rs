@@ -147,7 +147,7 @@ pub fn run() {
                             update_pe_state(state, photo_eye.clone()).await;
                         }
                         // Add a small delay between updates
-                        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                     }
                 }
             });
