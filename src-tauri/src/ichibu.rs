@@ -238,14 +238,14 @@ async fn handle_user_selection(
             
                     log::info!("Secondary Dispense COMPLETE");
                 }
-                {
-                    let state_guard = state.lock().unwrap();
-                    if !state_guard.dispenser_has_timed_out {
-                        let regular_dispense = DataAction::DispensedRegular;
-                        state.lock().unwrap().log_action(&regular_dispense);
-                    }
+                // {
+                //     let state_guard = state.lock().unwrap();
+                //     if !state_guard.dispenser_has_timed_out {
+                //         let regular_dispense = DataAction::DispensedRegular;
+                //         state.lock().unwrap().log_action(&regular_dispense);
+                //     }
                     
-                }
+                // }
                 log::info!("Breaking out of handle_user_selection");
                 break;
             }
