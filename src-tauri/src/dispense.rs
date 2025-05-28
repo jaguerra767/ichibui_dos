@@ -6,7 +6,7 @@ use control_components::{
 };
 
 use log::{error, info};
-use tokio::sync::{mpsc, oneshot};
+use tokio::{sync::{mpsc, oneshot}, time};
 
 struct Dispense {
     receiver: mpsc::Receiver<DispenseMsg>,
@@ -58,6 +58,7 @@ impl Dispense {
                         let status = self.motor.get_status().await;
                         if matches!(status, Status::Ready) {
                             log::info!("Motor Enabled!");
+                            time::sleep(Duration::from_millis(2000)).await; //Lets try a delay after enabling to let the signal settle
                             break;
                         }
                     }
