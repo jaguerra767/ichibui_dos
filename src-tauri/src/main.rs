@@ -5,6 +5,5 @@
 
 fn main() {
     env_logger::init();
-    console_subscriber::init();
     ichibu_lib::run()
 }

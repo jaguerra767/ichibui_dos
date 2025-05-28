@@ -54,6 +54,12 @@ impl Dispense {
                     if let Err(e) = self.motor.enable().await {
                         log::error!("Unable to enable motor: {:?}", e);
                     }
+                    loop {
+                        let status = self.motor.get_status().await;
+                        if matches!(status, Status::Ready) {
+                            break;
+                        }
+                    }
                 }
                 let dispense_condition = Dispenser::new(
                     self.motor.clone(),
