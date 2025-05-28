@@ -200,6 +200,7 @@ async fn handle_user_selection(
                 } else {
                     let action = DataAction::RanOut;
                     state_guard.log_action(&action);
+                    state_guard.update_state(IchibuState::Ready);
                 }
                 break;
             }
@@ -224,8 +225,8 @@ async fn handle_user_selection(
                     match dispense {
                         DispenseEndCondition::WeightAchieved(_) => {
                             log::info!("Primary dispense COMPLETE");
-                            // let action = &DataAction::DispensedRegular;
-                            // state_guard.log_action(action);
+                            let action = &DataAction::DispensedRegular;
+                            state_guard.log_action(action);
                         }
                         DispenseEndCondition::Timeout(_) => {
                             if state_guard.cycle_dispense_count > 2 {
@@ -239,8 +240,12 @@ async fn handle_user_selection(
                     }
             
                     log::info!("Secondary Dispense COMPLETE");
+                } else {
+                    let action = &DataAction::DispensedRegular;
+                    state.lock().unwrap().log_action(action);
                 }
                 log::info!("Breaking out of handle_user_selection");
+                
                 break;
             }
         }

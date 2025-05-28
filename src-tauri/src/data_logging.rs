@@ -42,7 +42,7 @@ impl Data {
     pub fn get_bowl_count(&self) -> Result<i64, Box<dyn Error + Send + Sync>> {
         let row_count: i64 =
             self.database
-                .query_row("SELECT COUNT(*) FROM dispense_logs", [], |row| row.get(0))?;
+                .query_row("SELECT COUNT(*) FROM dispense_logs WHERE  action IN ('Dispensed', 'DispensedSmall', 'DispensedRegular')", [], |row| row.get(0))?;
 
         Ok(row_count)
     }
