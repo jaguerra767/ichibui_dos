@@ -57,6 +57,7 @@ impl Dispense {
                     loop {
                         let status = self.motor.get_status().await;
                         if matches!(status, Status::Ready) {
+                            log::info!("Motor Enabled!");
                             break;
                         }
                     }
