@@ -234,7 +234,6 @@ async fn handle_user_selection(
                                 let action = DataAction::RanOut;
                                 state_guard.log_action(&action);
                             }
-                            break; //MAY HAVE TO REMOVE THIS
                         }
                         DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
                     }
