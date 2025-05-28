@@ -119,6 +119,7 @@ async fn handle_running_state(
                     state_guard.update_state(IchibuState::Ready);
                     let action = DataAction::RanOut;
                     state_guard.log_action(&action);
+                    return;
                 }
             }
             DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
@@ -190,6 +191,7 @@ async fn handle_user_selection(
             return;
         }
 
+
         match request {
             UiRequest::None => sleep(Duration::from_millis(250)).await,
             UiRequest::SmallDispense => {
@@ -234,6 +236,7 @@ async fn handle_user_selection(
                                 state_guard.update_state(IchibuState::Ready);
                                 let action = DataAction::RanOut;
                                 state_guard.log_action(&action);
+                                return;
                             }
                         }
                         DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
