@@ -1,7 +1,6 @@
 use rusqlite::{params, Connection};
 use std::error::Error;
 
-
 #[derive(Debug)]
 pub enum DataAction {
     DispensedSmall,
@@ -11,7 +10,6 @@ pub enum DataAction {
     RanOut,
     Refilled,
 }
-
 
 pub struct Data {
     database: Connection,
@@ -44,7 +42,7 @@ impl Data {
     pub fn get_bowl_count(&self) -> Result<i64, Box<dyn Error + Send + Sync>> {
         let row_count: i64 =
             self.database
-                .query_row("SELECT COUNT(*) FROM dispense_logs", [], |row| row.get(0))?;
+                .query_row("SELECT COUNT(*) FROM dispense_logs WHERE data IN ('Dispensed', 'DispensedSmall', 'DispensedRegular')", [], |row| row.get(0))?;
 
         Ok(row_count)
     }

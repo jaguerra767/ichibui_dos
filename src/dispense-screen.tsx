@@ -21,6 +21,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     const [peBlocked, setPeBlocked] = useState<Boolean>(false);
     const [dispenserBusy, setDispenserBusy] = useState<Boolean>(false);
     const [size, setSize] = useState<UiRequest>(UiRequest.None);
+    const [timedOut, setTimedOut] = useState<Boolean>(false);
 
     const fetchIchibuState = async () => {
         try{
@@ -30,6 +31,8 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
             setPeBlocked(peState);
             const dispenserBusy = await invoke<Boolean>("dispenser_is_busy");
             setDispenserBusy(dispenserBusy);
+            const timedOut = await invoke<Boolean>("dispenser_has_timed_out");
+            setTimedOut(timedOut);
         } catch (error) {
             console.error("Failed to update bowl count: ", error);
         }
@@ -37,6 +40,9 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
 
     // Function to get the main button's text based on PE blocked state
     const getButtonText = () => {
+        if(timedOut) {
+            return 'Empty, please refill!'
+        }
         if(!peBlocked) {
             return 'Please place bowl in bay below';
         }
@@ -52,6 +58,11 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
         const baseClasses = "w-full h-[150px] text-5xl font-bold focus:outline-none focus:ring-0 border-0";
         const readyClass = 'bg-green-600 hover:bg-green-700 active:bg-green-700';
         const notReadyClass = 'bg-gray-500 hover:bg-gray-500 active:bg-gray-500';
+        const timedOutClass = 'bg-destructive hover:bg-destructive active:bg-destructive';
+
+        if(timedOut) {
+            return `${baseClasses} ${timedOutClass}`;
+        }
         // Gray if PE NOT MADE
         if (!peBlocked) {
             return `${baseClasses} ${notReadyClass}`;
@@ -74,11 +85,14 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
     }
 
     const disableButton = () => {
+        if (timedOut) {
+            return true;
+        }
         if (!peBlocked){
-            return true
+            return true;
         }
         if(classicModeOn) {
-            return false
+            return false;
         }
         return size !== UiRequest.None ? false : true;
     }
@@ -152,7 +166,7 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
                             {dispenserBusy && <span className="text-white text-2xl">Dispensing...</span>}
                         </div>*/}
                         <div className="flex items-center justify-center py-7">
-                            {dispenserBusy && <SoundWave/>}
+                            {!timedOut && dispenserBusy && <SoundWave/>}
                         </div>
                     </div>
                 </div>

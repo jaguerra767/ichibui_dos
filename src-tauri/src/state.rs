@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 
+use log::info;
 use tokio::sync::{mpsc::Sender, oneshot};
 
 use control_components::components::{clear_core_io::DigitalInput, scale::ScaleCmd};
@@ -36,34 +37,33 @@ pub struct AppData {
     node_level: NodeLevel,
     pe_state: io::PhotoEyeState,
     dispenser_busy: bool,
+    pub dispenser_has_timed_out: bool,
     database: Data,
     bowl_count: i64,
+    pub cycle_dispense_count: usize,
     current_snack: Option<Ingredient>,
 }
 
 impl AppData {
     pub fn new() -> Self {
         let (database, bowl_count) = io::initialize_database();
-       // let pe_state = io::photo_eye_state(&photo_eye).await;
+        // let pe_state = io::photo_eye_state(&photo_eye).await;
         Self {
             state: IchibuState::Ready,
             ui_request: UiRequest::None,
             node_level: NodeLevel::Empty,
             pe_state: PhotoEyeState::Unblocked,
             dispenser_busy: false,
+            dispenser_has_timed_out: false,
             database,
             bowl_count,
+            cycle_dispense_count: 0,
             current_snack: None,
         }
     }
 
-    pub fn log_action(&mut self, action: &DataAction) {
-        let snack_id = if let Some(snack) = self.current_snack.as_ref() {
-            Some(snack.id)
-        } else {
-            None
-        };
-   
+    pub fn log_action(&mut self, action: &DataAction) { 
+        let snack_id = self.current_snack.as_ref().map(|snack| snack.id);
         let _ = self.database.log(action, snack_id);
         self.bowl_count = self.database.get_bowl_count().unwrap();
     }
@@ -91,13 +91,13 @@ impl AppData {
     pub fn set_dispenser_busy(&mut self, is_busy: bool) {
         self.dispenser_busy = is_busy;
     }
+
+    pub fn update_state(&mut self, new_state: IchibuState) {
+        self.state = new_state;
+    }
     //These are private so that they can only be called from the UI via the tauri commands below
     fn update_current_snack(&mut self, snack: Ingredient) {
         self.current_snack = Some(snack);
-    }
-
-    fn update_state(&mut self, new_state: IchibuState) {
-        self.state = new_state;
     }
 
     fn update_ui_request(&mut self, ui_request: UiRequest) {
@@ -137,7 +137,10 @@ pub async fn update_node_level(
 pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack: usize) {
     if let Ok(res) = read_ingredient_config(HOME_DIRECTORY.as_str()) {
         if let Some(ingredient) = res.ingredients.iter().find(|ing| ing.id == snack) {
-            state.lock().unwrap().update_current_snack(ingredient.clone());
+            state
+                .lock()
+                .unwrap()
+                .update_current_snack(ingredient.clone());
         }
     }
 }
@@ -145,16 +148,17 @@ pub fn update_current_ingredient(state: tauri::State<'_, Mutex<AppData>>, snack:
 #[tauri::command]
 pub fn update_run_state(state: tauri::State<'_, Mutex<AppData>>, new_state: IchibuState) {
     let mut state_guard = state.lock().unwrap();
-    if matches!(state_guard.get_state(), IchibuState::Ready){
+    if matches!(state_guard.get_state(), IchibuState::Ready) {
         match new_state {
             IchibuState::Cleaning => {
                 let action = DataAction::Cleaning;
-                state_guard.log_action(&action)},
+                state_guard.log_action(&action)
+            }
             IchibuState::Emptying => {
                 let action = DataAction::Emptying;
                 state_guard.log_action(&action);
-            },
-            _ => ()
+            }
+            _ => (),
         }
     }
     state_guard.update_state(new_state);
@@ -181,4 +185,19 @@ pub fn get_pe_blocked(state: tauri::State<'_, Mutex<AppData>>) -> bool {
 #[tauri::command]
 pub fn dispenser_is_busy(state: tauri::State<'_, Mutex<AppData>>) -> bool {
     state.lock().unwrap().dispenser_is_busy()
+}
+
+#[tauri::command]
+pub fn dispenser_has_timed_out(state: tauri::State<'_, Mutex<AppData>>) -> bool {
+    state.lock().unwrap().dispenser_has_timed_out
+}
+
+#[tauri::command]
+pub fn clear_dispenser_time_out(state: tauri::State<'_, Mutex<AppData>>) {
+    info!("Dispenser state cleared");
+    let mut state_guard = state.lock().unwrap();
+    state_guard.dispenser_has_timed_out = false;
+    state_guard.cycle_dispense_count = 0;
+    let action = DataAction::Refilled;
+    state_guard.log_action(&action);
 }

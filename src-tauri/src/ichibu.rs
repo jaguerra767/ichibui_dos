@@ -1,5 +1,7 @@
 use control_components::components::scale::ScaleCmd;
-use control_components::subsystems::dispenser::{Parameters, Setpoint, WeightedDispense};
+use control_components::subsystems::dispenser::{
+    DispenseEndCondition, Parameters, Setpoint, WeightedDispense,
+};
 use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::mpsc::Sender;
@@ -10,7 +12,7 @@ use crate::data_logging::DataAction;
 use crate::dispense::DispenseHandle;
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
-use crate::io::{initialize_controller, initialize_hatch, PhotoEyeState};
+use crate::io::{initialize_controller, initialize_hatch, setup_conveyor_motor, PhotoEyeState};
 use crate::state::{AppData, IchibuState};
 use crate::UiRequest;
 
@@ -18,8 +20,8 @@ pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale_tx: Sen
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
-    let motor_id = config.motor.id;
-    let dispenser = DispenseHandle::new(cc_handle.get_motor(motor_id).clone(), scale_tx);
+    let motor = setup_conveyor_motor(&config, &cc_handle).await;
+    let dispenser = DispenseHandle::new(motor, scale_tx);
 
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
@@ -101,11 +103,29 @@ async fn handle_running_state(
     }
     sleep(Duration::from_millis(2000)).await;
     log::info!("Starting primary dispense");
-    dispenser.launch_dispense(setpoint, parameters).await;
+    let dispense = dispenser.launch_dispense(setpoint, parameters).await;
     {
-        state.lock().unwrap().set_dispenser_busy(false);
+        let mut state_guard = state.lock().unwrap();
+        state_guard.set_dispenser_busy(false);
+
+        match dispense {
+            DispenseEndCondition::WeightAchieved(_) => {
+                log::info!("Primary dispense COMPLETE");
+            }
+            DispenseEndCondition::Timeout(_) => {
+                if state_guard.cycle_dispense_count > 2 {
+                    log::info!("Oh fuck we timed out");
+                    state_guard.dispenser_has_timed_out = true;
+                    state_guard.update_state(IchibuState::Ready);
+                    let action = DataAction::RanOut;
+                    state_guard.log_action(&action);
+                    return;
+                }
+            }
+            DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
+        }
     }
-    log::info!("Primary dispense COMPLETE");
+
     handle_user_selection(state.clone(), dispenser, &snack).await;
 
     let ichibu_state = {
@@ -116,12 +136,18 @@ async fn handle_running_state(
 
     if matches!(ichibu_state, IchibuState::Cleaning) {
         let cleaning = DataAction::Cleaning;
-        state.lock().unwrap().log_action(&cleaning);
+        let mut state_guard = state.lock().unwrap();
+        state_guard.log_action(&cleaning);
+        state_guard.dispenser_has_timed_out = false;
+        state_guard.cycle_dispense_count = 0;
         return;
     }
     if matches!(ichibu_state, IchibuState::Emptying) {
         let emptying = DataAction::Emptying;
-        state.lock().unwrap().log_action(&emptying);
+        let mut state_guard = state.lock().unwrap();
+        state_guard.log_action(&emptying);
+        state_guard.dispenser_has_timed_out = false;
+        state_guard.cycle_dispense_count = 0;
         return;
     }
 
@@ -130,6 +156,8 @@ async fn handle_running_state(
     }
     sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
+    state.cycle_dispense_count = state.cycle_dispense_count + 1;
+    log::info!("Dispense count: {}", state.cycle_dispense_count);
     state.reset_ui_request();
 }
 
@@ -138,8 +166,8 @@ async fn handle_user_selection(
     dispenser: &DispenseHandle,
     snack: &Ingredient,
 ) {
+    log::info!("Waiting for user input");
     loop {
-        log::info!("Waiting for user input");
         let (request, ichibu_state) = {
             let state = state.lock().unwrap();
             let request = state.get_ui_request();
@@ -148,24 +176,37 @@ async fn handle_user_selection(
         };
         if matches!(ichibu_state, IchibuState::Cleaning) {
             let cleaning = DataAction::Cleaning;
-            state.lock().unwrap().log_action(&cleaning);
+            let mut state_guard = state.lock().unwrap();
+            state_guard.log_action(&cleaning);
+            state_guard.dispenser_has_timed_out = false;
+            state_guard.cycle_dispense_count = 0;
             return;
         }
         if matches!(ichibu_state, IchibuState::Emptying) {
             let emptying = DataAction::Emptying;
-            state.lock().unwrap().log_action(&emptying);
+            let mut state_guard = state.lock().unwrap();
+            state_guard.log_action(&emptying);
+            state_guard.dispenser_has_timed_out = false;
+            state_guard.cycle_dispense_count = 0;
             return;
         }
+
 
         match request {
             UiRequest::None => sleep(Duration::from_millis(250)).await,
             UiRequest::SmallDispense => {
                 let small_dispense = DataAction::DispensedSmall;
-                state.lock().unwrap().log_action(&small_dispense);
-                break
-            },
+                let mut state_guard = state.lock().unwrap();
+                if !state_guard.dispenser_has_timed_out {
+                    state_guard.log_action(&small_dispense);
+                } else {
+                    let action = DataAction::RanOut;
+                    state_guard.log_action(&action);
+                    state_guard.update_state(IchibuState::Ready);
+                }
+                break;
+            }
             UiRequest::RegularDispense => {
-                
                 if matches!(ichibu_state, IchibuState::RunningSized) {
                     let sp = snack.max_setpoint - snack.min_setpoint;
                     let setpoint = Setpoint::Weight(WeightedDispense {
@@ -176,19 +217,38 @@ async fn handle_user_selection(
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
-                    dispenser
+                    let dispense = dispenser
                         .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
                         .await;
-                    {
-                        state.lock().unwrap().set_dispenser_busy(false);
+
+                    let mut state_guard = state.lock().unwrap();
+                    state_guard.set_dispenser_busy(false);
+
+                    match dispense {
+                        DispenseEndCondition::WeightAchieved(_) => {
+                            log::info!("Primary dispense COMPLETE");
+                            let action = &DataAction::DispensedRegular;
+                            state_guard.log_action(action);
+                        }
+                        DispenseEndCondition::Timeout(_) => {
+                            if state_guard.cycle_dispense_count > 2 {
+                                state_guard.dispenser_has_timed_out = true;
+                                state_guard.update_state(IchibuState::Ready);
+                                let action = DataAction::RanOut;
+                                state_guard.log_action(&action);
+                                return;
+                            }
+                        }
+                        DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
                     }
+            
                     log::info!("Secondary Dispense COMPLETE");
+                } else {
+                    let action = &DataAction::DispensedRegular;
+                    state.lock().unwrap().log_action(action);
                 }
-                {
-                    let regular_dispense = DataAction::DispensedRegular;
-                    state.lock().unwrap().log_action(&regular_dispense);
-                    
-                }
+                log::info!("Breaking out of handle_user_selection");
+                
                 break;
             }
         }

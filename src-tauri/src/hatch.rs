@@ -1,8 +1,8 @@
+use crate::config::HatchConfig;
 use control_components::components::clear_core_io::DigitalInput;
 use control_components::components::clear_core_motor::ClearCoreMotor;
 use std::time::Duration;
 use tokio::time::{interval, Instant};
-use crate::config::HatchConfig;
 
 // TODO: maybe put these in config as well?
 pub const HATCH_TIMEOUT: Duration = Duration::from_secs(6);
@@ -29,7 +29,7 @@ impl Hatch {
         self.motor.clear_alerts().await;
         self.motor.set_velocity(config.velocity).await;
         self.motor.set_acceleration(config.acceleration).await;
-        self.motor.set_deceleration(config.acceleration).await;
+        //self.motor.set_deceleration(config.acceleration).await;
     }
     pub async fn open(&mut self) -> Result<(), HatchError> {
         if self.open_input.get_state().await {
@@ -68,4 +68,3 @@ impl Hatch {
         Ok(())
     }
 }
-

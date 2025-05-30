@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use control_components::{
-    components::{clear_core_motor::ClearCoreMotor, scale::ScaleCmd},
+    components::{clear_core_motor::{Status, ClearCoreMotor}, scale::ScaleCmd},
     subsystems::dispenser::{DispenseEndCondition, Dispenser, Parameters, Setpoint},
 };
 
-use log::error;
-use tokio::sync::{mpsc, oneshot};
+use log::{error, info};
+use tokio::{sync::{mpsc, oneshot}, time};
 
 struct Dispense {
     receiver: mpsc::Receiver<DispenseMsg>,
@@ -48,7 +48,21 @@ impl Dispense {
                 parameters,
                 respond_to,
             } => {
-                let _ = self.motor.enable().await;
+                let motor_status = self.motor.get_status().await;
+                if !matches!(motor_status, Status::Ready) {
+                    self.motor.clear_alerts().await;
+                    if let Err(e) = self.motor.enable().await {
+                        log::error!("Unable to enable motor: {:?}", e);
+                    }
+                    loop {
+                        let status = self.motor.get_status().await;
+                        if matches!(status, Status::Ready) {
+                            log::info!("Motor Enabled!");
+                            time::sleep(Duration::from_millis(2000)).await; //Lets try a delay after enabling to let the signal settle
+                            break;
+                        }
+                    }
+                }
                 let dispense_condition = Dispenser::new(
                     self.motor.clone(),
                     setpoint,
@@ -57,6 +71,7 @@ impl Dispense {
                 )
                 .dispense(self.timeout)
                 .await;
+                info!("Dispenser end condition: {:?}", dispense_condition);
                 let _ = respond_to.send(dispense_condition);
             }
             DispenseMsg::Disable => {
@@ -98,7 +113,11 @@ impl DispenseHandle {
         Self { sender }
     }
 
-    pub async fn launch_dispense(&self, setpoint: Setpoint, parameters: Parameters) ->DispenseEndCondition {
+    pub async fn launch_dispense(
+        &self,
+        setpoint: Setpoint,
+        parameters: Parameters,
+    ) -> DispenseEndCondition {
         let (send, recv) = oneshot::channel();
         let msg = DispenseMsg::LaunchDispense {
             setpoint,
