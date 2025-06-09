@@ -17,9 +17,11 @@ use state::{
 };
 use std::env;
 use std::sync::{LazyLock, Mutex};
+use std::time::Duration;
 use tauri::AppHandle;
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
+use libra::scale;
 
 pub mod config;
 pub mod data_logging;
@@ -114,47 +116,47 @@ pub fn run() {
         .setup(move |app| {
             let app_handle = app.app_handle();
 
-            let coefficients = config.phidget.coefficients;
+            //Let's spawn the scale
 
-            //Lets spawn the scale
+            // let (scale_tx, scale_rx) = channel(10);
+            let scale = scale::DisconnectedScale::new(config.phidget.sn);
+            let scale = scale.connect(0., config.phidget.coefficients, Duration::from_secs(10)).expect("Couldn't connect scale!");
 
-            let (scale_tx, scale_rx) = channel(10);
+            // tauri::async_runtime::spawn({
+            //     async move {
+            //         let mut scale = Scale::new(config.phidget.sn);
+            //         scale = Scale::change_coefficients(scale, coefficients.to_vec());
+            //         if let Ok(scale) = scale.connect() {
+            //             if let Err(e) = actor(scale, scale_rx).await {
+            //                 log::error!("Scale runtime error: {}", e);
+            //             }
+            //         } else {
+            //             log::warn!("Launching in demo mode");
+            //         }
+            //     }
+            // });
 
-            tauri::async_runtime::spawn({
-                async move {
-                    let mut scale = Scale::new(config.phidget.sn);
-                    scale = Scale::change_coefficients(scale, coefficients.to_vec());
-                    if let Ok(scale) = scale.connect() {
-                        if let Err(e) = actor(scale, scale_rx).await {
-                            log::error!("Scale runtime error: {}", e);
-                        }
-                    } else {
-                        log::warn!("Launching in demo mode");
-                    }
-                }
-            });
+            // let empty_weight = config.setpoint.empty;
+            // //Routine to update io members of state that we need for the UI
+            // tauri::async_runtime::spawn({
+            //     let app_handle = app_handle.clone();
+            //     let scale_tx = scale_tx.clone();
+            //     async move {
+            //         loop {
+            //             if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
+            //                 update_node_level(state.clone(), empty_weight, scale_tx.clone())
+            //                         .await;
+            //                 update_pe_state(state, photo_eye.clone()).await;
+            //             }
+            //             // Add a small delay between updates
+            //             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            //         }
+            //     }
+            // });
 
-            let empty_weight = config.setpoint.empty;
-            //Routine to update io members of state that we need for the UI
             tauri::async_runtime::spawn({
                 let app_handle = app_handle.clone();
-                let scale_tx = scale_tx.clone();
-                async move {
-                    loop {
-                        if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
-                            update_node_level(state.clone(), empty_weight, scale_tx.clone())
-                                    .await;
-                            update_pe_state(state, photo_eye.clone()).await;
-                        }
-                        // Add a small delay between updates
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    }
-                }
-            });
-
-            tauri::async_runtime::spawn({
-                let app_handle = app_handle.clone();
-                let scale_tx = scale_tx.clone();
+                // let scale_tx = scale_tx.clone();
                 async move {
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     let state = loop {
@@ -162,10 +164,10 @@ pub fn run() {
                         if let Some(state) = app_handle.try_state::<Mutex<state::AppData>> ()  {    
                             break state;
                         } else {
-                            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                            tokio::time::sleep(Duration::from_millis(50)).await;
                         }
                     };
-                    ichibu_cycle(state, scale_tx.clone()).await;
+                    ichibu_cycle(state, scale).await;
                 }
             });
             Ok(())
