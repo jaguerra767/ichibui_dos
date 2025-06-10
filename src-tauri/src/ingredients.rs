@@ -60,8 +60,8 @@ impl Default for Ingredients {
 }
 
 pub fn read_ingredient_config(root_dir: &str) -> Result<Ingredients, Box<dyn std::error::Error>> {
-    // const PATH: &str = ".config/ichibu/ingredient_config.toml";
-    const PATH: &str = "Documents/ingredient_config.toml";
+    const PATH: &str = ".config/ichibu/ingredient_config.toml";
+    // const PATH: &str = "Documents/ingredient_config.toml";
     let path = format!("{}/{}", root_dir, PATH);
     let config_content = std::fs::read_to_string(path)?;
     let config = toml::from_str(&config_content)?;
