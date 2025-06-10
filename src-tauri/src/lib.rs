@@ -138,21 +138,21 @@ pub fn run() {
 
             // let empty_weight = config.setpoint.empty;
             // //Routine to update io members of state that we need for the UI
-            // tauri::async_runtime::spawn({
-            //     let app_handle = app_handle.clone();
-            //     let scale_tx = scale_tx.clone();
-            //     async move {
-            //         loop {
-            //             if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
-            //                 update_node_level(state.clone(), empty_weight, scale_tx.clone())
-            //                         .await;
-            //                 update_pe_state(state, photo_eye.clone()).await;
-            //             }
-            //             // Add a small delay between updates
-            //             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            //         }
-            //     }
-            // });
+            tauri::async_runtime::spawn({
+                let app_handle = app_handle.clone();
+                // let scale_tx = scale_tx.clone();
+                async move {
+                    loop {
+                        if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
+                            // update_node_level(state.clone(), empty_weight, scale_tx.clone())
+                            //         .await;
+                            update_pe_state(state, photo_eye.clone()).await;
+                        }
+                        // Add a small delay between updates
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    }
+                }
+            });
 
             tauri::async_runtime::spawn({
                 let app_handle = app_handle.clone();

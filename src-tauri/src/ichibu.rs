@@ -150,7 +150,7 @@ async fn handle_running_state(
     };
 
     // handle_user_selection(state.clone(), dispenser, &snack).await;
-    scale = handle_user_selection(state.clone(), scale, &conveyor, &snack).await;
+    scale = handle_user_selection(state.clone(), scale, conveyor, &snack).await;
 
     let ichibu_state = {
         let state = state.lock().unwrap();
@@ -180,7 +180,7 @@ async fn handle_running_state(
     }
     sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
-    state.cycle_dispense_count = state.cycle_dispense_count + 1;
+    state.cycle_dispense_count += 1;
     log::info!("Dispense count: {}", state.cycle_dispense_count);
     state.reset_ui_request();
     scale
@@ -237,10 +237,6 @@ async fn handle_user_selection(
             UiRequest::RegularDispense => {
                 if matches!(ichibu_state, IchibuState::RunningSized) {
                     let sp = snack.max_setpoint - snack.min_setpoint;
-                    let setpoint = Setpoint::Weight(WeightedDispense {
-                        setpoint: sp as f64,
-                        timeout: Duration::from_micros(1000),
-                    });
                     log::info!("Starting secondary dispense");
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
@@ -250,7 +246,7 @@ async fn handle_user_selection(
                     //     .await;
                     // TODO: need to get this from config later
                     let dispense_settings = DispenseSettings::default();
-                    let dispense = dispenser::DispenseOutcome::dispense(&conveyor, scale, dispense_settings).await.expect("Dispense failed :(");
+                    let dispense = dispenser::DispenseOutcome::dispense(conveyor, scale, dispense_settings).await.expect("Dispense failed :(");
 
                     let mut state_guard = state.lock().unwrap();
                     state_guard.set_dispenser_busy(false);
