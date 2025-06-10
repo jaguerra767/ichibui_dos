@@ -1,4 +1,3 @@
-use control_components::subsystems::dispenser::Parameters;
 use node_diagnostics::dispenser::DispenseSettings;
 use serde::Serialize;
 use serde_derive::Deserialize;

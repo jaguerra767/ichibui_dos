@@ -1,24 +1,18 @@
 use control_components::components::clear_core_motor::ClearCoreMotor;
-use control_components::components::scale::ScaleCmd;
-use control_components::subsystems::dispenser::{
-    DispenseEndCondition, Parameters, Setpoint, WeightedDispense,
-};
 use libra::scale::ConnectedScale;
 use std::sync::Mutex;
 use std::time::Duration;
-use tokio::sync::mpsc::Sender;
 use tokio::time::sleep;
 
 use crate::config::Config;
 use crate::data_logging::DataAction;
-use crate::dispense::DispenseHandle;
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
 use crate::io::{initialize_controller, initialize_hatch, setup_conveyor_motor, PhotoEyeState};
 use crate::state::{AppData, IchibuState};
-use crate::{dispense, UiRequest};
+use crate::{UiRequest};
 use node_diagnostics::dispenser;
-use node_diagnostics::dispenser::{DispenseOutcome, DispenseSettings};
+use node_diagnostics::dispenser::{DispenseOutcome};
 
 pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale: ConnectedScale) {
     let config = Config::load();

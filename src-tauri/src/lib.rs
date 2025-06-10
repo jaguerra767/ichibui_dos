@@ -1,6 +1,4 @@
 use config::Config;
-use control_components::components::scale::actor;
-use control_components::components::scale::Scale;
 use ichibu::ichibu_cycle;
 use ingredients::{read_ingredient_config, UiData};
 use io::initialize_controller;
@@ -10,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use state::clear_dispenser_time_out;
 use state::dispenser_has_timed_out;
 use state::get_pe_blocked;
-use state::update_node_level;
 use state::update_pe_state;
 use state::{
     dispenser_is_busy, get_dispense_count, update_current_ingredient, update_run_state,
@@ -21,7 +18,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 use tauri::AppHandle;
 use tauri::{ipc::Response, Manager};
-use tokio::sync::mpsc::channel;
+use crate::state::update_lights_state;
 
 pub mod config;
 pub mod data_logging;
@@ -110,6 +107,9 @@ pub fn run() {
 
     let photo_eye = controller.get_digital_input(config.photo_eye.input_id);
 
+    let red = controller.get_h_bridge(4);
+    let green = controller.get_h_bridge(5);
+
     tauri::Builder::default()
         .manage(Mutex::new(state::AppData::new()))
         .plugin(tauri_plugin_opener::init())
@@ -148,7 +148,8 @@ pub fn run() {
                         if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
                             // update_node_level(state.clone(), empty_weight, scale_tx.clone())
                             //         .await;
-                            update_pe_state(state, photo_eye.clone()).await;
+                            update_pe_state(state.clone(), photo_eye.clone()).await;
+                            update_lights_state(state.clone(), red.clone(), green.clone()).await;
                         }
                         // Add a small delay between updates
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;

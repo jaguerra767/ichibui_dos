@@ -5,7 +5,6 @@ use tokio::sync::{mpsc::Sender, oneshot};
 
 use control_components::components::{clear_core_io::DigitalInput, scale::ScaleCmd};
 use control_components::components::clear_core_io::{HBridge, HBridgeState};
-use control_components::controllers::clear_core::Outputs;
 use serde::{Deserialize, Serialize};
 
 use crate::{
