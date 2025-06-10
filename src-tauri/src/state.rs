@@ -4,6 +4,8 @@ use log::info;
 use tokio::sync::{mpsc::Sender, oneshot};
 
 use control_components::components::{clear_core_io::DigitalInput, scale::ScaleCmd};
+use control_components::components::clear_core_io::{HBridge, HBridgeState};
+use control_components::controllers::clear_core::Outputs;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -114,7 +116,31 @@ pub async fn update_pe_state(state: tauri::State<'_, Mutex<AppData>>, photo_eye:
     let pe_state = io::photo_eye_state(&photo_eye).await;
     state.lock().unwrap().pe_state = pe_state;
 }
-
+pub async fn update_lights_state(state: tauri::State<'_, Mutex<AppData>>, red: HBridge, green: HBridge) {
+    let (run_state, _dispenser_busy) = {
+        let state = state.lock().unwrap();
+        let run_state = state.get_state();
+        let dispenser_busy = state.dispenser_is_busy();
+        (run_state, dispenser_busy)
+    };
+    match run_state {
+        IchibuState::Ready => {
+            red.set_state(HBridgeState::Neg).await;
+            green.set_state(HBridgeState::Neg).await;
+        }
+        IchibuState::RunningClassic | IchibuState::RunningSized => {
+            red.set_state(HBridgeState::Pos).await;
+            green.set_state(HBridgeState::Neg).await;
+        }
+        _ => {
+            red.set_state(HBridgeState::Pos).await;
+            green.set_state(HBridgeState::Pos).await;
+        }
+    }
+    // match state {
+    //
+    // }
+}
 pub async fn update_node_level(
     state: tauri::State<'_, Mutex<AppData>>,
     empty_weight: f64,
