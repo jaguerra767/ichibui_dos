@@ -155,7 +155,7 @@ pub fn run() {
                             update_lights_state(state.clone(), lights.clone(), sleep).await;
                         }
                         // Add a small delay between updates
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        interval.tick().await;
                     }
                 }
             });
