@@ -18,6 +18,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 use tauri::AppHandle;
 use tauri::{ipc::Response, Manager};
+use crate::lights::Lights;
 use crate::state::update_lights_state;
 
 pub mod config;
@@ -29,6 +30,7 @@ pub mod ingredients;
 pub mod io;
 
 pub mod state;
+mod lights;
 
 pub static HOME_DIRECTORY: LazyLock<String> = LazyLock::new(|| {
     env::var_os("HOME")
@@ -106,9 +108,7 @@ pub fn run() {
     let controller = initialize_controller(&config);
 
     let photo_eye = controller.get_digital_input(config.photo_eye.input_id);
-
-    let red = controller.get_h_bridge(4);
-    let green = controller.get_h_bridge(5);
+    let lights = Lights::new(controller.clone());
 
     tauri::Builder::default()
         .manage(Mutex::new(state::AppData::new()))
@@ -149,7 +149,7 @@ pub fn run() {
                             // update_node_level(state.clone(), empty_weight, scale_tx.clone())
                             //         .await;
                             update_pe_state(state.clone(), photo_eye.clone()).await;
-                            update_lights_state(state.clone(), red.clone(), green.clone()).await;
+                            update_lights_state(state.clone(), lights.clone()).await;
                         }
                         // Add a small delay between updates
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;

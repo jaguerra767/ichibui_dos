@@ -4,7 +4,6 @@ use log::info;
 use tokio::sync::{mpsc::Sender, oneshot};
 
 use control_components::components::{clear_core_io::DigitalInput, scale::ScaleCmd};
-use control_components::components::clear_core_io::{HBridge, HBridgeState};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -13,6 +12,7 @@ use crate::{
     io::{self, PhotoEyeState},
     UiRequest, HOME_DIRECTORY,
 };
+use crate::lights::{LightColors, Lights};
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub enum IchibuState {
@@ -115,30 +115,27 @@ pub async fn update_pe_state(state: tauri::State<'_, Mutex<AppData>>, photo_eye:
     let pe_state = io::photo_eye_state(&photo_eye).await;
     state.lock().unwrap().pe_state = pe_state;
 }
-pub async fn update_lights_state(state: tauri::State<'_, Mutex<AppData>>, red: HBridge, green: HBridge) {
-    let (run_state, _dispenser_busy) = {
+pub async fn update_lights_state(state: tauri::State<'_, Mutex<AppData>>, mut lights: Lights) {
+    let (run_state, dispenser_busy) = {
         let state = state.lock().unwrap();
         let run_state = state.get_state();
         let dispenser_busy = state.dispenser_is_busy();
         (run_state, dispenser_busy)
     };
-    match run_state {
-        IchibuState::Ready => {
-            red.set_state(HBridgeState::Neg).await;
-            green.set_state(HBridgeState::Neg).await;
+    match (run_state, dispenser_busy) {
+        (IchibuState::Ready, _) => {
+            lights.turn_off().await;
         }
-        IchibuState::RunningClassic | IchibuState::RunningSized => {
-            red.set_state(HBridgeState::Pos).await;
-            green.set_state(HBridgeState::Neg).await;
+        (IchibuState::RunningClassic | IchibuState::RunningSized, true) => {
+            lights.set_color(LightColors::Yellow).await;
+        }
+        (IchibuState::RunningClassic | IchibuState::RunningSized, false) => {
+            lights.set_color(LightColors::Green).await;
         }
         _ => {
-            red.set_state(HBridgeState::Pos).await;
-            green.set_state(HBridgeState::Pos).await;
+            lights.set_color(LightColors::Red).await;
         }
     }
-    // match state {
-    //
-    // }
 }
 pub async fn update_node_level(
     state: tauri::State<'_, Mutex<AppData>>,
