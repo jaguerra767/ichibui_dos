@@ -143,13 +143,16 @@ pub fn run() {
             tauri::async_runtime::spawn({
                 let app_handle = app_handle.clone();
                 // let scale_tx = scale_tx.clone();
+                let sleep = Duration::from_millis(500);
+                let mut interval = tokio::time::interval(sleep);
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                 async move {
                     loop {
                         if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
                             // update_node_level(state.clone(), empty_weight, scale_tx.clone())
                             //         .await;
                             update_pe_state(state.clone(), photo_eye.clone()).await;
-                            update_lights_state(state.clone(), lights.clone()).await;
+                            update_lights_state(state.clone(), lights.clone(), sleep).await;
                         }
                         // Add a small delay between updates
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;

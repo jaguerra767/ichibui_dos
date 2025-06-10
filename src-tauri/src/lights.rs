@@ -34,6 +34,7 @@ impl Lights {
         self.green.set_state(HBridgeState::Pos).await;
     }
 }
+
 pub enum LightColors {
     Red,
     Yellow,

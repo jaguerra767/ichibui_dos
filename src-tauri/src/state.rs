@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-
+use std::time::Duration;
 use log::info;
 use tokio::sync::{mpsc::Sender, oneshot};
 
@@ -115,25 +115,31 @@ pub async fn update_pe_state(state: tauri::State<'_, Mutex<AppData>>, photo_eye:
     let pe_state = io::photo_eye_state(&photo_eye).await;
     state.lock().unwrap().pe_state = pe_state;
 }
-pub async fn update_lights_state(state: tauri::State<'_, Mutex<AppData>>, mut lights: Lights) {
-    let (run_state, dispenser_busy) = {
+pub async fn update_lights_state(state: tauri::State<'_, Mutex<AppData>>, mut lights: Lights, interval: Duration) {
+    let (run_state, dispenser_busy, is_timed_out) = {
         let state = state.lock().unwrap();
         let run_state = state.get_state();
         let dispenser_busy = state.dispenser_is_busy();
-        (run_state, dispenser_busy)
+        let is_timed_out = state.dispenser_has_timed_out;
+        (run_state, dispenser_busy, is_timed_out)
     };
-    match (run_state, dispenser_busy) {
-        (IchibuState::Ready, _) => {
+    match (run_state, dispenser_busy, is_timed_out) {
+        (_, _, true) => {
+            lights.set_color(LightColors::Red).await;
+            tokio::time::sleep(interval/2).await;
             lights.turn_off().await;
         }
-        (IchibuState::RunningClassic | IchibuState::RunningSized, true) => {
+        (IchibuState::Ready, _, _) => {
+            lights.turn_off().await;
+        }
+        (IchibuState::RunningClassic | IchibuState::RunningSized, true, _) => {
             lights.set_color(LightColors::Yellow).await;
         }
-        (IchibuState::RunningClassic | IchibuState::RunningSized, false) => {
+        (IchibuState::RunningClassic | IchibuState::RunningSized, false, _) => {
             lights.set_color(LightColors::Green).await;
         }
         _ => {
-            lights.set_color(LightColors::Red).await;
+            lights.turn_off().await;
         }
     }
 }
