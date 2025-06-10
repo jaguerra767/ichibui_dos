@@ -62,7 +62,7 @@ impl AppData {
         }
     }
 
-    pub fn log_action(&mut self, action: &DataAction) { 
+    pub fn log_action(&mut self, action: &DataAction) {
         let snack_id = self.current_snack.as_ref().map(|snack| snack.id);
         let _ = self.database.log(action, snack_id);
         self.bowl_count = self.database.get_bowl_count().unwrap();

@@ -4,6 +4,7 @@ use control_components::components::scale::Scale;
 use ichibu::ichibu_cycle;
 use ingredients::{read_ingredient_config, UiData};
 use io::initialize_controller;
+use libra::scale;
 use log::info;
 use serde::{Deserialize, Serialize};
 use state::clear_dispenser_time_out;
@@ -21,7 +22,6 @@ use std::time::Duration;
 use tauri::AppHandle;
 use tauri::{ipc::Response, Manager};
 use tokio::sync::mpsc::channel;
-use libra::scale;
 
 pub mod config;
 pub mod data_logging;
@@ -89,7 +89,7 @@ fn log_in(pin: String) -> User {
         if pin_num == pins.sudo {
             std::process::exit(0x0)
         }
-       if pin_num == pins.manager {
+        if pin_num == pins.manager {
             println!("Manager, what are we going to dispense today?");
             User::Manager
         } else if pin_num == pins.operator {
@@ -120,7 +120,9 @@ pub fn run() {
 
             // let (scale_tx, scale_rx) = channel(10);
             let scale = scale::DisconnectedScale::new(config.phidget.sn);
-            let scale = scale.connect(0., config.phidget.coefficients, Duration::from_secs(10)).expect("Couldn't connect scale!");
+            let scale = scale
+                .connect(0., config.phidget.coefficients, Duration::from_secs(10))
+                .expect("Couldn't connect scale!");
 
             // tauri::async_runtime::spawn({
             //     async move {
@@ -161,7 +163,7 @@ pub fn run() {
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     let state = loop {
                         //wait for state to become available
-                        if let Some(state) = app_handle.try_state::<Mutex<state::AppData>> ()  {    
+                        if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
                             break state;
                         } else {
                             tokio::time::sleep(Duration::from_millis(50)).await;
