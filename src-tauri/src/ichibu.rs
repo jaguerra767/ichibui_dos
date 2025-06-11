@@ -210,6 +210,13 @@ async fn handle_user_selection(
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
+                    
+                    let cycle_dispense_count = { state.lock().unwrap().cycle_dispense_count };
+                    if cycle_dispense_count == 0 { 
+                        conveyor.relative_move(1.5).await.expect("Motor error");
+                        conveyor.wait_for_move(Duration::from_millis(20)).await.expect("Motor error");
+                    }
+                    
                     let dispense_settings = snack.dispense_settings.clone();
                     let dispense =
                         DispenseOutcome::dispense(conveyor, scale, dispense_settings)
