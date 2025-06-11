@@ -46,6 +46,9 @@ const DispenseScreen: React.FC<DispenseScreenProps> = ({snack, mode}) => {
         if(!peBlocked) {
             return 'Please place bowl in bay below';
         }
+        if(dispenserBusy){
+            return 'Wait for it...';
+        }
         if (classicModeOn){
             return 'Dispense';
         }
