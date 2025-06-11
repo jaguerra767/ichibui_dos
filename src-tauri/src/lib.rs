@@ -120,9 +120,10 @@ pub fn run() {
 
             // let (scale_tx, scale_rx) = channel(10);
             let scale = scale::DisconnectedScale::new(config.phidget.sn);
-            let scale = scale
+            let mut scale = scale
                 .connect(0., config.phidget.coefficients, Duration::from_secs(10))
                 .expect("Couldn't connect scale!");
+            scale.set_data_intervals(Duration::from_millis(40)).expect("Couldn't set phidget data interval!");
 
             // tauri::async_runtime::spawn({
             //     async move {
@@ -139,22 +140,19 @@ pub fn run() {
             // });
 
             // let empty_weight = config.setpoint.empty;
+            
             // //Routine to update io members of state that we need for the UI
             tauri::async_runtime::spawn({
                 let app_handle = app_handle.clone();
-                // let scale_tx = scale_tx.clone();
                 async move {
                     let sleep = Duration::from_millis(500);
                     let mut interval = tokio::time::interval(sleep);
                     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                     loop {
                         if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
-                            // update_node_level(state.clone(), empty_weight, scale_tx.clone())
-                            //         .await;
                             update_pe_state(state.clone(), photo_eye.clone()).await;
                             update_lights_state(state.clone(), lights.clone(), sleep).await;
                         }
-                        // Add a small delay between updates
                         interval.tick().await;
                     }
                 }
