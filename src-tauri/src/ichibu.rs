@@ -213,8 +213,10 @@ async fn handle_user_selection(
                     
                     let cycle_dispense_count = { state.lock().unwrap().cycle_dispense_count };
                     if cycle_dispense_count == 0 { 
+                        log::info!("Priming conveyor...");
                         conveyor.relative_move(1.5).await.expect("Motor error");
                         conveyor.wait_for_move(Duration::from_millis(20)).await.expect("Motor error");
+                        log::info!("Primed!");
                     }
                     
                     let dispense_settings = snack.dispense_settings.clone();
