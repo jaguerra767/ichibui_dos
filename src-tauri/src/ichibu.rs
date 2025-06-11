@@ -215,6 +215,7 @@ async fn handle_user_selection(
                     if cycle_dispense_count == 0 { 
                         log::info!("Priming conveyor...");
                         conveyor.relative_move(1.5).await.expect("Motor error");
+                        tokio::time::sleep(Duration::from_millis(50)).await;
                         conveyor.wait_for_move(Duration::from_millis(20)).await.expect("Motor error");
                         log::info!("Primed!");
                     }
