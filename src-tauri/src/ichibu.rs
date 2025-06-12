@@ -209,7 +209,7 @@ async fn handle_user_selection(
                     if cycle_dispense_count == 0 {
                         log::info!("Priming conveyor...");
                         conveyor.relative_move(1.5).await.expect("Motor error");
-                        tokio::time::sleep(Duration::from_millis(50)).await;
+                        tokio::time::sleep(Duration::from_millis(100)).await;
                         conveyor.wait_for_move(Duration::from_millis(20)).await.expect("Motor error");
                         log::info!("Primed!");
                     }
@@ -264,7 +264,7 @@ async fn handle_emptying_state(
             return
         }
         conveyor.enable().await.expect("Hatch Failed to enable");
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
         conveyor.relative_move(10.).await.expect("Motor error");
     } else {
         conveyor.abrupt_stop().await;
