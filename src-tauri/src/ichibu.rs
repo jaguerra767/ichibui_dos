@@ -262,6 +262,7 @@ async fn handle_emptying_state(
         if hatch.open().await.is_err() {
             log::error!("Hatch Failed to Open")
         }
+        conveyor.enable().await.expect("Hatch Failed to enable");
         conveyor.relative_move(10.).await.expect("Motor error");
     } else {
         conveyor.abrupt_stop().await;
