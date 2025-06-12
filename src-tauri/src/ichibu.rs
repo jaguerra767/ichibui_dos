@@ -56,10 +56,11 @@ async fn run_cycle_loop(
                 if hatch.open().await.is_err() {
                     log::error!("Hatch Failed To Open")
                 }
+                conveyor.disable().await;
                 // dispenser.disable().await;
                 tokio::time::sleep(Duration::from_millis(1000)).await
             }
-            IchibuState::Emptying => handle_emptying_state(/*dispenser,*/ hatch, pe_state).await,
+            IchibuState::Emptying => handle_emptying_state(conveyor, hatch, pe_state).await,
             IchibuState::Ready => tokio::time::sleep(Duration::from_millis(1000)).await,
             IchibuState::RunningClassic | IchibuState::RunningSized => {
                 scale = handle_running_state(state, scale, conveyor, hatch).await
@@ -78,23 +79,16 @@ async fn handle_running_state(
     if hatch.close().await.is_err() {
         log::error!("Hatch Failed to Close");
     }
-    // TODO: figure out if we need to replace this:
-    // let setpoint = {
-    //     let ichibu_state = state.lock().unwrap().get_state();
-    //     if matches!(ichibu_state, IchibuState::RunningClassic) {
-    //         snack.max_setpoint
-    //     } else {
-    //         snack.min_setpoint
-    //     }
-    // };
     
     {
         state.lock().unwrap().set_dispenser_busy(true);
     }
+    
     sleep(Duration::from_millis(2000)).await;
     log::info!("Starting primary dispense");
     // let dispense = dispenser.launch_dispense(setpoint, parameters).await;
     // TODO: need to get this from config later
+    conveyor.enable().await.expect("Conveyor enable failed");
     let dispense_settings = snack.dispense_settings.clone();
     let dispense = dispenser::DispenseOutcome::dispense(conveyor, scale, dispense_settings)
         .await
@@ -210,16 +204,16 @@ async fn handle_user_selection(
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
-                    
+
                     let cycle_dispense_count = { state.lock().unwrap().cycle_dispense_count };
-                    if cycle_dispense_count == 0 { 
+                    if cycle_dispense_count == 0 {
                         log::info!("Priming conveyor...");
                         conveyor.relative_move(1.5).await.expect("Motor error");
                         tokio::time::sleep(Duration::from_millis(50)).await;
                         conveyor.wait_for_move(Duration::from_millis(20)).await.expect("Motor error");
                         log::info!("Primed!");
                     }
-                    
+
                     let dispense_settings = snack.dispense_settings.clone();
                     let dispense =
                         DispenseOutcome::dispense(conveyor, scale, dispense_settings)
@@ -260,6 +254,7 @@ async fn handle_user_selection(
 }
 
 async fn handle_emptying_state(
+    conveyor: &ClearCoreMotor,
     hatch: &mut Hatch,
     pe_state: PhotoEyeState,
 ) {
@@ -267,8 +262,8 @@ async fn handle_emptying_state(
         if hatch.open().await.is_err() {
             log::error!("Hatch Failed to Open")
         }
-        // dispenser.empty().await;
+        conveyor.relative_move(10.).await.expect("Motor error");
     } else {
-        // dispenser.disable().await;
+        conveyor.abrupt_stop().await;
     }
 }

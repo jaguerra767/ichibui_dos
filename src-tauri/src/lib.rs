@@ -162,7 +162,7 @@ pub fn run() {
                 let app_handle = app_handle.clone();
                 // let scale_tx = scale_tx.clone();
                 async move {
-                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                    tokio::time::sleep(Duration::from_millis(100)).await;
                     let state = loop {
                         //wait for state to become available
                         if let Some(state) = app_handle.try_state::<Mutex<state::AppData>>() {
@@ -211,7 +211,7 @@ pub fn read_caldo_logo(root_dir: &str) -> Result<Vec<u8>, Box<dyn std::error::Er
 #[test]
 fn test_read_caldo_logo() {
     let logo = read_caldo_logo(HOME_DIRECTORY.as_str());
-    assert_ne!(logo.is_err(), true);
+    assert!(logo.is_ok());
     println!("{:?}", logo.unwrap())
 }
 
