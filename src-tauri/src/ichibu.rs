@@ -78,6 +78,8 @@ async fn handle_running_state(
     let snack = { state.lock().unwrap().get_snack().unwrap().clone() };
     if hatch.close().await.is_err() {
         log::error!("Hatch Failed to Close");
+        state.lock().unwrap().dispenser_has_timed_out = true;
+        return scale
     }
     
     {
