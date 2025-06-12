@@ -56,8 +56,8 @@ async fn run_cycle_loop(
                 if hatch.open().await.is_err() {
                     log::error!("Hatch Failed To Open")
                 }
+                conveyor.abrupt_stop().await;
                 conveyor.disable().await;
-                // dispenser.disable().await;
                 tokio::time::sleep(Duration::from_millis(1000)).await
             }
             IchibuState::Emptying => handle_emptying_state(conveyor, hatch, pe_state).await,
@@ -260,9 +260,11 @@ async fn handle_emptying_state(
 ) {
     if matches!(pe_state, PhotoEyeState::Blocked) {
         if hatch.open().await.is_err() {
-            log::error!("Hatch Failed to Open")
+            log::error!("Hatch Failed to Open");
+            return
         }
         conveyor.enable().await.expect("Hatch Failed to enable");
+        tokio::time::sleep(Duration::from_millis(10)).await;
         conveyor.relative_move(10.).await.expect("Motor error");
     } else {
         conveyor.abrupt_stop().await;
