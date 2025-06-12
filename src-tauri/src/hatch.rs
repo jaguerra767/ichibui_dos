@@ -59,7 +59,7 @@ impl Hatch {
         while !self.close_input.get_state().await {
             if Instant::now() - start_time > HATCH_TIMEOUT {
                 self.motor.abrupt_stop().await;
-                self.motor.relative_move(-HATCH_STROKE).await.unwrap();
+                self.open().await?;
                 return Err(HatchError::Timeout);
             }
             interval.tick().await;

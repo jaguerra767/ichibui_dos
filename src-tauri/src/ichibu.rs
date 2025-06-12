@@ -1,33 +1,30 @@
-use control_components::components::scale::ScaleCmd;
-use control_components::subsystems::dispenser::{
-    DispenseEndCondition, Parameters, Setpoint, WeightedDispense,
-};
+use control_components::components::clear_core_motor::ClearCoreMotor;
+use libra::scale::ConnectedScale;
 use std::sync::Mutex;
 use std::time::Duration;
-use tokio::sync::mpsc::Sender;
 use tokio::time::sleep;
 
 use crate::config::Config;
 use crate::data_logging::DataAction;
-use crate::dispense::DispenseHandle;
 use crate::hatch::Hatch;
 use crate::ingredients::Ingredient;
 use crate::io::{initialize_controller, initialize_hatch, setup_conveyor_motor, PhotoEyeState};
 use crate::state::{AppData, IchibuState};
-use crate::UiRequest;
+use crate::{UiRequest};
+use node_diagnostics::dispenser;
+use node_diagnostics::dispenser::{DispenseOutcome};
 
-pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale_tx: Sender<ScaleCmd>) {
+pub async fn ichibu_cycle(state: tauri::State<'_, Mutex<AppData>>, scale: ConnectedScale) {
     let config = Config::load();
 
     let cc_handle = initialize_controller(&config);
     let motor = setup_conveyor_motor(&config, &cc_handle).await;
-    let dispenser = DispenseHandle::new(motor, scale_tx);
 
     let mut hatch = initialize_hatch(&cc_handle, &config).await;
 
     let _ = hatch.close().await;
 
-    run_cycle_loop(state, &dispenser, &mut hatch).await;
+    run_cycle_loop(state, scale, &motor, &mut hatch).await;
 }
 
 async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
@@ -42,7 +39,8 @@ async fn wait_for_pe(state: tauri::State<'_, Mutex<AppData>>) {
 
 async fn run_cycle_loop(
     state: tauri::State<'_, Mutex<AppData>>,
-    dispenser: &DispenseHandle,
+    mut scale: ConnectedScale,
+    conveyor: &ClearCoreMotor,
     hatch: &mut Hatch,
 ) {
     loop {
@@ -58,13 +56,14 @@ async fn run_cycle_loop(
                 if hatch.open().await.is_err() {
                     log::error!("Hatch Failed To Open")
                 }
-                dispenser.disable().await;
+                conveyor.abrupt_stop().await;
+                conveyor.disable().await;
                 tokio::time::sleep(Duration::from_millis(1000)).await
             }
-            IchibuState::Emptying => handle_emptying_state(dispenser, hatch, pe_state).await,
+            IchibuState::Emptying => handle_emptying_state(conveyor, hatch, pe_state).await,
             IchibuState::Ready => tokio::time::sleep(Duration::from_millis(1000)).await,
             IchibuState::RunningClassic | IchibuState::RunningSized => {
-                handle_running_state(state, dispenser, hatch).await
+                scale = handle_running_state(state, scale, conveyor, hatch).await
             }
         }
     }
@@ -72,61 +71,51 @@ async fn run_cycle_loop(
 
 async fn handle_running_state(
     state: tauri::State<'_, Mutex<AppData>>,
-    dispenser: &DispenseHandle,
+    mut scale: ConnectedScale,
+    conveyor: &ClearCoreMotor,
     hatch: &mut Hatch,
-) {
-    //Make sure we don't keep the mutex lock as dispense blocks...
-
+) -> ConnectedScale {
     let snack = { state.lock().unwrap().get_snack().unwrap().clone() };
     if hatch.close().await.is_err() {
         log::error!("Hatch Failed to Close");
+        state.lock().unwrap().dispenser_has_timed_out = true;
+        return scale
     }
-
-    let setpoint = {
-        let ichibu_state = state.lock().unwrap().get_state();
-        if matches!(ichibu_state, IchibuState::RunningClassic) {
-            snack.max_setpoint
-        } else {
-            snack.min_setpoint
-        }
-    };
-
-    let setpoint = Setpoint::Weight(WeightedDispense {
-        setpoint: setpoint as f64,
-        timeout: Duration::from_millis(30000),
-    });
-
-    let parameters = Parameters::from(&snack.dispense_parameters);
-
+    
     {
         state.lock().unwrap().set_dispenser_busy(true);
     }
+    
     sleep(Duration::from_millis(2000)).await;
     log::info!("Starting primary dispense");
-    let dispense = dispenser.launch_dispense(setpoint, parameters).await;
-    {
+    // let dispense = dispenser.launch_dispense(setpoint, parameters).await;
+    // TODO: need to get this from config later
+    conveyor.enable().await.expect("Conveyor enable failed");
+    let dispense_settings = snack.dispense_settings.clone();
+    let dispense = dispenser::DispenseOutcome::dispense(conveyor, scale, dispense_settings)
+        .await
+        .expect("Dispense failed");
+    scale = {
         let mut state_guard = state.lock().unwrap();
         state_guard.set_dispenser_busy(false);
 
         match dispense {
-            DispenseEndCondition::WeightAchieved(_) => {
-                log::info!("Primary dispense COMPLETE");
-            }
-            DispenseEndCondition::Timeout(_) => {
+            DispenseOutcome::Success(_, scale) => scale,
+            DispenseOutcome::Timeout(_, scale) => {
                 if state_guard.cycle_dispense_count > 2 {
-                    log::info!("Oh fuck we timed out");
+                    log::info!("oh fuck we timed out");
                     state_guard.dispenser_has_timed_out = true;
                     state_guard.update_state(IchibuState::Ready);
                     let action = DataAction::RanOut;
                     state_guard.log_action(&action);
-                    return;
+                    return scale;
+                } else {
+                    scale
                 }
             }
-            DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
         }
-    }
-
-    handle_user_selection(state.clone(), dispenser, &snack).await;
+    };
+    scale = handle_user_selection(state.clone(), scale, conveyor, &snack).await;
 
     let ichibu_state = {
         let state = state.lock().unwrap();
@@ -140,7 +129,7 @@ async fn handle_running_state(
         state_guard.log_action(&cleaning);
         state_guard.dispenser_has_timed_out = false;
         state_guard.cycle_dispense_count = 0;
-        return;
+        return scale;
     }
     if matches!(ichibu_state, IchibuState::Emptying) {
         let emptying = DataAction::Emptying;
@@ -148,7 +137,7 @@ async fn handle_running_state(
         state_guard.log_action(&emptying);
         state_guard.dispenser_has_timed_out = false;
         state_guard.cycle_dispense_count = 0;
-        return;
+        return scale;
     }
 
     if hatch.open().await.is_err() {
@@ -156,18 +145,20 @@ async fn handle_running_state(
     }
     sleep(Duration::from_millis(1000)).await;
     let mut state = state.lock().unwrap();
-    state.cycle_dispense_count = state.cycle_dispense_count + 1;
+    state.cycle_dispense_count += 1;
     log::info!("Dispense count: {}", state.cycle_dispense_count);
     state.reset_ui_request();
+    scale
 }
 
 async fn handle_user_selection(
     state: tauri::State<'_, Mutex<AppData>>,
-    dispenser: &DispenseHandle,
+    mut scale: ConnectedScale,
+    conveyor: &ClearCoreMotor,
     snack: &Ingredient,
-) {
+) -> ConnectedScale {
     log::info!("Waiting for user input");
-    loop {
+    let scale = loop {
         let (request, ichibu_state) = {
             let state = state.lock().unwrap();
             let request = state.get_ui_request();
@@ -180,7 +171,7 @@ async fn handle_user_selection(
             state_guard.log_action(&cleaning);
             state_guard.dispenser_has_timed_out = false;
             state_guard.cycle_dispense_count = 0;
-            return;
+            return scale;
         }
         if matches!(ichibu_state, IchibuState::Emptying) {
             let emptying = DataAction::Emptying;
@@ -188,12 +179,13 @@ async fn handle_user_selection(
             state_guard.log_action(&emptying);
             state_guard.dispenser_has_timed_out = false;
             state_guard.cycle_dispense_count = 0;
-            return;
+            return scale;
         }
-
-
-        match request {
-            UiRequest::None => sleep(Duration::from_millis(250)).await,
+        scale = match request {
+            UiRequest::None => {
+                sleep(Duration::from_millis(250)).await;
+                scale
+            }
             UiRequest::SmallDispense => {
                 let small_dispense = DataAction::DispensedSmall;
                 let mut state_guard = state.lock().unwrap();
@@ -204,69 +196,79 @@ async fn handle_user_selection(
                     state_guard.log_action(&action);
                     state_guard.update_state(IchibuState::Ready);
                 }
-                break;
+                break scale;
             }
             UiRequest::RegularDispense => {
                 if matches!(ichibu_state, IchibuState::RunningSized) {
-                    let sp = snack.max_setpoint - snack.min_setpoint;
-                    let setpoint = Setpoint::Weight(WeightedDispense {
-                        setpoint: sp as f64,
-                        timeout: Duration::from_micros(1000),
-                    });
+                    // TODO: figure out how to replace this:
+                    // let sp = snack.max_setpoint - snack.min_setpoint;
                     log::info!("Starting secondary dispense");
                     {
                         state.lock().unwrap().set_dispenser_busy(true);
                     }
-                    let dispense = dispenser
-                        .launch_dispense(setpoint, Parameters::from(&snack.dispense_parameters))
-                        .await;
+
+                    let cycle_dispense_count = { state.lock().unwrap().cycle_dispense_count };
+                    if cycle_dispense_count == 0 {
+                        log::info!("Priming conveyor...");
+                        conveyor.relative_move(1.5).await.expect("Motor error");
+                        tokio::time::sleep(Duration::from_millis(500)).await;
+                        conveyor.wait_for_move(Duration::from_millis(20)).await.expect("Motor error");
+                        log::info!("Primed!");
+                    }
+
+                    let dispense_settings = snack.dispense_settings.clone();
+                    let dispense =
+                        DispenseOutcome::dispense(conveyor, scale, dispense_settings)
+                            .await
+                            .expect("Dispense failed :(");
 
                     let mut state_guard = state.lock().unwrap();
                     state_guard.set_dispenser_busy(false);
 
-                    match dispense {
-                        DispenseEndCondition::WeightAchieved(_) => {
-                            log::info!("Primary dispense COMPLETE");
-                            let action = &DataAction::DispensedRegular;
-                            state_guard.log_action(action);
-                        }
-                        DispenseEndCondition::Timeout(_) => {
+                    let scale = match dispense {
+                        DispenseOutcome::Success(_, scale) => scale,
+                        DispenseOutcome::Timeout(_, scale) => {
                             if state_guard.cycle_dispense_count > 2 {
+                                log::info!("oh fuck we timed out");
                                 state_guard.dispenser_has_timed_out = true;
                                 state_guard.update_state(IchibuState::Ready);
                                 let action = DataAction::RanOut;
                                 state_guard.log_action(&action);
-                                return;
+                                return scale;
+                            } else {
+                                scale
                             }
                         }
-                        DispenseEndCondition::Failed => log::error!("Failed to Dispense!"),
-                    }
-            
+                    };
                     log::info!("Secondary Dispense COMPLETE");
+                    scale
                 } else {
                     let action = &DataAction::DispensedRegular;
                     state.lock().unwrap().log_action(action);
+                    log::info!("Breaking out of handle_user_selection");
+                    break scale;
                 }
-                log::info!("Breaking out of handle_user_selection");
-                
-                break;
             }
-        }
-    }
+        };
+    };
     wait_for_pe(state.clone()).await;
+    scale
 }
 
 async fn handle_emptying_state(
-    dispenser: &DispenseHandle,
+    conveyor: &ClearCoreMotor,
     hatch: &mut Hatch,
     pe_state: PhotoEyeState,
 ) {
     if matches!(pe_state, PhotoEyeState::Blocked) {
         if hatch.open().await.is_err() {
-            log::error!("Hatch Failed to Open")
+            log::error!("Hatch Failed to Open");
+            return
         }
-        dispenser.empty().await;
+        conveyor.enable().await.expect("Hatch Failed to enable");
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+        conveyor.relative_move(10.).await.expect("Motor error");
     } else {
-        dispenser.disable().await;
+        conveyor.abrupt_stop().await;
     }
 }

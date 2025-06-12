@@ -1,12 +1,18 @@
 use std::time::Duration;
 
 use control_components::{
-    components::{clear_core_motor::{Status, ClearCoreMotor}, scale::ScaleCmd},
+    components::{
+        clear_core_motor::{ClearCoreMotor, Status},
+        scale::ScaleCmd,
+    },
     subsystems::dispenser::{DispenseEndCondition, Dispenser, Parameters, Setpoint},
 };
 
 use log::{error, info};
-use tokio::{sync::{mpsc, oneshot}, time};
+use tokio::{
+    sync::{mpsc, oneshot},
+    time,
+};
 
 struct Dispense {
     receiver: mpsc::Receiver<DispenseMsg>,

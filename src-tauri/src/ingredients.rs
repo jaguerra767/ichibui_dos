@@ -1,4 +1,4 @@
-use control_components::subsystems::dispenser::Parameters;
+use node_diagnostics::dispenser::DispenseSettings;
 use serde::Serialize;
 use serde_derive::Deserialize;
 
@@ -24,68 +24,13 @@ impl Default for UiData {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct DispenseParameters {
-    pub motor_speed: f64,
-    pub sample_rate: f64,
-    pub cutoff_freq: f64,
-    pub check_offset: f64,
-    pub stop_offset: f64,
-    pub retract_before: bool,
-    pub retract_before_param: f64,
-    pub retract_after: bool,
-    pub retract_after_param: f64,
-}
-
-impl Default for DispenseParameters {
-    fn default() -> Self {
-        Self {
-            motor_speed: 0.7,
-            sample_rate: 50.,
-            cutoff_freq: 2.,
-            check_offset: 0.3,
-            stop_offset: 1.,
-            retract_before: false,
-            retract_before_param: 0.0,
-            retract_after: false,
-            retract_after_param: 0.0,
-        }
-    }
-}
-
-impl From<&DispenseParameters> for Parameters {
-    fn from(value: &DispenseParameters) -> Self {
-        let retract_before = if value.retract_before {
-            Some(value.retract_before_param)
-        } else {
-            None
-        };
-
-        let retract_after = if value.retract_after {
-            Some(value.retract_after_param)
-        } else {
-            None
-        };
-
-        Self {
-            motor_speed: value.motor_speed,
-            sample_rate: value.sample_rate,
-            cutoff_frequency: value.cutoff_freq,
-            check_offset: value.check_offset,
-            stop_offset: value.stop_offset,
-            retract_before,
-            retract_after,
-        }
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
 pub struct Ingredient {
     pub name: String,
     pub id: usize,
     pub max_setpoint: usize,
     pub min_setpoint: usize,
     pub ui_data: UiData,
-    pub dispense_parameters: DispenseParameters,
+    pub dispense_settings: DispenseSettings,
 }
 
 impl Default for Ingredient {
@@ -96,7 +41,7 @@ impl Default for Ingredient {
             max_setpoint: 25,
             min_setpoint: 10,
             ui_data: Default::default(),
-            dispense_parameters: Default::default(),
+            dispense_settings: Default::default(),
         }
     }
 }
@@ -115,6 +60,7 @@ impl Default for Ingredients {
 
 pub fn read_ingredient_config(root_dir: &str) -> Result<Ingredients, Box<dyn std::error::Error>> {
     const PATH: &str = ".config/ichibu/ingredient_config.toml";
+    // const PATH: &str = "Documents/ingredient_config.toml";
     let path = format!("{}/{}", root_dir, PATH);
     let config_content = std::fs::read_to_string(path)?;
     let config = toml::from_str(&config_content)?;
@@ -128,5 +74,5 @@ fn test_read_ingredient_config() {
     if config.is_err() {
         println!("{:?}", config);
     }
-    assert_ne!(config.is_err(), true)
+    assert!(config.is_ok())
 }
